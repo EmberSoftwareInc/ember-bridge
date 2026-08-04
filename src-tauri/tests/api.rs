@@ -23,15 +23,18 @@ struct TestApp {
 /// Minimal temp-dir helper so we don't pull in a crate for one test file.
 mod tempdir {
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NEXT_DIR: AtomicU64 = AtomicU64::new(1);
 
     pub struct TempDir(PathBuf);
 
     impl TempDir {
         pub fn new() -> Self {
             let dir = std::env::temp_dir().join(format!(
-                "ember-bridge-test-{}-{:?}",
+                "ember-bridge-test-{}-{}",
                 std::process::id(),
-                std::time::Instant::now()
+                NEXT_DIR.fetch_add(1, Ordering::Relaxed)
             ));
             std::fs::create_dir_all(&dir).unwrap();
             Self(dir)
