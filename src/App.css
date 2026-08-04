@@ -518,6 +518,20 @@ textarea {
 
 /* ---- logs ---------------------------------------------------------------- */
 
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-toolbar .dim {
+  margin-top: 3px;
+}
+
 .log-view {
   flex: 1;
   overflow-y: auto;
@@ -555,6 +569,18 @@ textarea {
 .log-warn .log-level { color: var(--warn); }
 .log-error .log-level { color: var(--err); }
 .log-error .log-message { color: var(--err); }
+
+.update-safety {
+  padding: 10px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.update-safety-active {
+  border-color: var(--err);
+  background: color-mix(in srgb, var(--err) 12%, transparent);
+}
 
 /* ---- boot error ----------------------------------------------------------- */
 

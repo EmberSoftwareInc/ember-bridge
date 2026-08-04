@@ -32,7 +32,7 @@ fn browse_candidates() -> Vec<IpAddr> {
     while let Some(remaining) = deadline.checked_duration_since(std::time::Instant::now()) {
         match receiver.recv_timeout(remaining) {
             Ok(ServiceEvent::ServiceResolved(info)) => {
-                found.extend(info.get_addresses().iter().copied().map(IpAddr::from));
+                found.extend(info.get_addresses().iter().copied());
             }
             Ok(_) => {}
             Err(_) => break, // window elapsed or channel closed

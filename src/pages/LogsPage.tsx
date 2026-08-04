@@ -11,6 +11,7 @@ import { formatTime } from "../lib/format";
 export function LogsPage() {
   const { client } = useBridge();
   const [entries, setEntries] = useState<LogEntry[]>([]);
+  const [copyState, setCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
   const lastSeq = useRef(0);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -40,8 +41,54 @@ export function LogsPage() {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [entries]);
 
+  const copyDiagnostics = async () => {
+    if (!client) return;
+    setCopyState("copying");
+    try {
+      const [status, logs] = await Promise.all([client.status(), client.logs(0)]);
+      const lines = [
+        "Ember Bridge diagnostics",
+        `Generated: ${new Date().toISOString()}`,
+        `Bridge version: ${status.version}`,
+        `API version: ${status.apiVersion}`,
+        `Platform: ${navigator.userAgent}`,
+        `API: ${status.server.running ? "running" : "stopped"} on port ${status.server.port}`,
+        `API error: ${status.server.error ?? "none"}`,
+        `Uptime: ${status.uptimeSeconds} seconds`,
+        `Saved machines: ${status.savedMachines}`,
+        `Pending uploads: ${status.pendingUploads}`,
+        "",
+        "Activity log:",
+        ...logs.entries.map(
+          (entry) =>
+            `${new Date(entry.timestampMs).toISOString()} ${entry.level.toUpperCase()} ${entry.message}`,
+        ),
+      ];
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 2000);
+    } catch {
+      setCopyState("error");
+    }
+  };
+
   return (
     <div className="page page-logs">
+      <div className="log-toolbar">
+        <div>
+          <strong>Support diagnostics</strong>
+          <div className="dim">Includes system details and activity, but no API token or WiFi password.</div>
+        </div>
+        <button onClick={() => void copyDiagnostics()} disabled={!client || copyState === "copying"}>
+          {copyState === "copying"
+            ? "Collecting…"
+            : copyState === "copied"
+              ? "Copied!"
+              : copyState === "error"
+                ? "Copy failed — retry"
+                : "Copy diagnostics"}
+        </button>
+      </div>
       {entries.length === 0 ? (
         <EmptyState>No activity yet.</EmptyState>
       ) : (

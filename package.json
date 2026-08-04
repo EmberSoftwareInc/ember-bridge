@@ -1,11 +1,12 @@
 {
   "name": "ember-bridge",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "check:versions": "node scripts/check-versions.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

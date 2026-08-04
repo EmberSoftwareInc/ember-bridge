@@ -18,10 +18,12 @@ use std::net::IpAddr;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
+type RecordedUploads = Arc<Mutex<Vec<(String, Vec<u8>)>>>;
+
 #[derive(Clone, Default)]
 struct MockDongle {
     /// (filename, body bytes) of received uploads.
-    uploads: Arc<Mutex<Vec<(String, Vec<u8>)>>>,
+    uploads: RecordedUploads,
     /// Simulate a nearly-full card.
     free_bytes: u64,
     /// User-chosen machine name (firmware 0.5.0+); "" = never named.

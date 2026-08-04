@@ -54,6 +54,11 @@ lets you update it:
    (`ember-connect.bin`).
 2. Click **Update firmware** and watch the progress bar.
 
+Keep the dongle plugged in and leave Ember Bridge open until it says the image
+was verified and the dongle is rebooting. If power is interrupted, the dongle
+should retain its previous bootable firmware, but the update will need to be
+started again.
+
 The dongle only accepts images signed with the official EmberConnect key, so it
 will reject anything else. When it finishes, the dongle verifies the update,
 reboots, and reappears after a few seconds. You normally won't need this unless

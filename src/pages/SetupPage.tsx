@@ -352,6 +352,12 @@ function FirmwareUpdate({
         (ember-connect.bin) to update over USB — the dongle rejects anything
         not signed with the EmberConnect key.
       </p>
+      <p className={updating ? "update-safety update-safety-active" : "update-safety"}>
+        <strong>{updating ? "Update in progress — do not unplug the dongle or close Ember Bridge." : "Keep the dongle plugged in for the entire update."}</strong>{" "}
+        {updating
+          ? "Wait until Ember Bridge says the update was verified and the dongle is rebooting."
+          : "If power is interrupted, the dongle should retain its previous bootable firmware, but the update will need to be tried again."}
+      </p>
       <form
         className="inline-form"
         onSubmit={(e) => {

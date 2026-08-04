@@ -68,6 +68,16 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify release version
+        run: npm run check:versions
+
+      - name: Test frontend
+        run: npm run build
+
+      - name: Test Rust backend
+        run: cargo test --all-targets
+        working-directory: src-tauri
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
