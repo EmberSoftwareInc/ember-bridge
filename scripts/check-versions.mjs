@@ -5,7 +5,11 @@ const packageJson = readJson("package.json");
 const packageLock = readJson("package-lock.json");
 const tauriConfig = readJson("src-tauri/tauri.conf.json");
 const cargoToml = readFileSync("src-tauri/Cargo.toml", "utf8");
+const cargoLock = readFileSync("src-tauri/Cargo.lock", "utf8");
 const cargoVersion = cargoToml.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
+const cargoLockVersion = cargoLock.match(
+  /\[\[package\]\]\s+name\s*=\s*"ember-bridge"\s+version\s*=\s*"([^"]+)"/,
+)?.[1];
 
 const versions = new Map([
   ["package.json", packageJson.version],
@@ -13,6 +17,7 @@ const versions = new Map([
   ["package-lock.json root package", packageLock.packages?.[""]?.version],
   ["src-tauri/tauri.conf.json", tauriConfig.version],
   ["src-tauri/Cargo.toml", cargoVersion],
+  ["src-tauri/Cargo.lock", cargoLockVersion],
 ]);
 
 const expected = packageJson.version;
