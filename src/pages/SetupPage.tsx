@@ -148,7 +148,7 @@ export function SetupPage() {
         <p className="dim">
           This sets up Wi-Fi and local transfers from this computer. To connect
           Ember Link to your Ember account for cloud delivery, use
-          connect.emberdesign.net.
+          emberdesign.net/connect.
         </p>
         <Section title="Dongle ready">
           <p>
@@ -196,7 +196,7 @@ export function SetupPage() {
             account and works without Bridge.
           </p>
           <button
-            onClick={() => void openUrl("https://connect.emberdesign.net")}
+            onClick={() => void openUrl("https://emberdesign.net/connect")}
           >
             Open cloud setup
           </button>

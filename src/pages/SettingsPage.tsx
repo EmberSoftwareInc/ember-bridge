@@ -96,7 +96,7 @@ export function SettingsPage() {
           without Bridge. The USB setup here connects it to Wi-Fi and pairs it
           with this computer for local transfers.
         </p>
-        <button onClick={() => void openUrl("https://connect.emberdesign.net")}>
+        <button onClick={() => void openUrl("https://emberdesign.net/connect")}>
           Open Ember Link cloud setup
         </button>
       </Section>

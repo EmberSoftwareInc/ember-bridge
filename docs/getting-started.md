@@ -66,7 +66,7 @@ The left sidebar holds the main pages:
 
 The **Set up Ember Link** page guides local USB setup. Connect a dongle over USB
 when instructed. For cloud account setup without Bridge, use
-[connect.emberdesign.net](https://connect.emberdesign.net).
+[emberdesign.net/connect](https://emberdesign.net/connect).
 
 The sidebar shows **Ready for Ember** when the local service is running, plus
 the currently selected target. Connection details are in Settings.
