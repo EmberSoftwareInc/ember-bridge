@@ -2,7 +2,9 @@
 
 An **Ember Link** dongle adds WiFi to an embroidery machine that doesn't have
 it. You set the dongle up once by plugging it into your computer over USB, tell
-it which WiFi network to join, then move it to your machine.
+it which WiFi network to join, then move it to your machine. Bridge pairs the
+dongle with this computer for local transfers; no account or web app is required.
+This flow does not change cloud configuration or account ownership.
 
 ## Before you start
 
@@ -13,8 +15,7 @@ your router uses one name for both bands, that's fine.
 ## Step by step
 
 1. **Plug the dongle into a USB port on this computer.** Ember Bridge detects it
-   automatically and an **Set up Ember Link** entry appears in the sidebar.
-   Open it.
+   automatically. Open **Set up Ember Link** in the sidebar.
 
 2. **Check the dongle.** The page shows the dongle's **Serial**, **Firmware**,
    and **Status** — one of *new — needs WiFi*, *configured, not connected*, or
@@ -37,7 +38,9 @@ your router uses one name for both bands, that's fine.
 
 Now **unplug the dongle from your computer and plug it into your embroidery
 machine.** It reconnects to your WiFi on its own and is ready to sew — no
-further setup needed. To set up another dongle, click **Set up another dongle**.
+further setup needed. Click **Go to machines**, select the dongle, then open
+**Send** to manage files and send designs from your computer. To set up another
+dongle, click **Set up another dongle**.
 
 ## If the machine asks to pair later
 

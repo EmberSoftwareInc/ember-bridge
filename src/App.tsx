@@ -61,7 +61,7 @@ function PairingBanner({ client }: { client: BridgeClient }) {
       <div className="pairing-text">
         <strong>{request.origin}</strong>
         {request.appName !== "Unnamed app" && ` (${request.appName})`} wants to
-        connect to your embroidery machines.
+        connect to machines on your local network.
       </div>
       <div className="pairing-actions">
         <button
@@ -154,14 +154,21 @@ function Shell() {
           <div
             className={`dot ${status.data?.server.running ? "dot-ok" : "dot-err"}`}
           />
-          {status.data?.server.running ? "Ready for Ember" : "Bridge offline"}
+          {status.data?.server.running
+            ? "Local bridge ready"
+            : "Bridge offline"}
           {selectedIp && <div className="dim">Target: {selectedIp}</div>}
         </div>
       </nav>
       <main className="content">
         {client && <PairingBanner client={client} />}
-        {page === "machines" && <MachinesPage />}
-        {page === "setup" && <SetupPage />}
+        {page === "machines" && (
+          <MachinesPage
+            onSetup={() => setPage("setup")}
+            onSend={() => setPage("send")}
+          />
+        )}
+        {page === "setup" && <SetupPage onReady={() => setPage("machines")} />}
         {page === "send" && <SendPage />}
         {page === "logs" && <LogsPage />}
         {page === "settings" && <SettingsPage />}

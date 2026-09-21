@@ -1,12 +1,22 @@
 # Getting started
 
-Ember Bridge is a small desktop app that lets the **Ember** design editor —
-running in your web browser — send embroidery designs to your WiFi-connected
-embroidery machine. It runs quietly in the background and does one job: pass
-your designs from the browser to the machine on your local network.
+Ember Bridge sends design files from your computer to supported Brother Wi-Fi
+machines and Ember Link dongles over your local network. You can use it on its
+own without an Ember account or the Ember web app.
 
-You only need it running while you're sending designs, but it's happiest left
-running in the menu bar so it's always ready.
+You can also send from the Ember web editor through Bridge. Supported Brother
+Wi-Fi machines connect directly and need no dongle. Cloud service is managed
+exclusively in the Ember web app.
+
+## Your first local transfer
+
+1. Put your computer and machine on the same Wi-Fi network. If you use a new
+   Ember Link, open **Set up Ember Link** and configure it over USB first.
+2. On **Machines**, click **Scan network**, save the device, and select it.
+3. Open **Send**, choose a design from your computer, and click **Send to machine**.
+   You can also browse files there and delete them on devices that support it.
+
+Keep Bridge running while sending. It can stay in the menu bar between transfers.
 
 ## Installing
 
@@ -65,8 +75,7 @@ The left sidebar holds the main pages:
 - **Help** — this manual.
 
 The **Set up Ember Link** page guides local USB setup. Connect a dongle over USB
-when instructed. For cloud account setup without Bridge, use
-[emberdesign.net/connect](https://emberdesign.net/connect).
+when instructed. This configures local Wi-Fi and pairing with this computer.
 
-The sidebar shows **Ready for Ember** when the local service is running, plus
+The sidebar shows **Local bridge ready** when the local service is running, plus
 the currently selected target. Connection details are in Settings.

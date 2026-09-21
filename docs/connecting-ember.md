@@ -1,6 +1,11 @@
 # Connecting Ember
 
-Ember (the design editor in your browser) sends designs *through* Ember Bridge.
+Sending from the Ember web editor is optional. Bridge's **Send** page also lets
+you choose files from this computer without an Ember account or web app.
+
+For browser-based local sending, Ember sends designs *through* Ember Bridge.
+Supported Brother Wi-Fi machines connect directly, with no dongle required.
+Other machines can receive local transfers through Ember Link.
 Because a web page can't silently reach an app on your computer, you authorize
 the connection once. There are two ways to do it.
 
@@ -61,4 +66,6 @@ to open Ember Bridge. The app must already be installed. Opening it does not
 authorize access: approve the separate connection request in Bridge.
 
 Ember Link cloud account setup is separate from pairing this computer with
-Bridge. Cloud delivery does not require Bridge to be installed or running.
+Bridge. Cloud service is configured and controlled exclusively in the Ember web
+app; Bridge never enables, disables, claims, or configures it. Cloud delivery does
+not require Bridge to be installed or running.

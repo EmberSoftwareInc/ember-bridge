@@ -9,7 +9,6 @@
  * Bridge, so the machine is usable the moment it appears on the network.
  */
 
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useRef, useState } from "react";
 import {
   asDongleError,
@@ -38,7 +37,7 @@ function signalBars(rssi: number): string {
   return rssi > -55 ? "▮▮▮" : rssi > -70 ? "▮▮▯" : "▮▯▯";
 }
 
-export function SetupPage() {
+export function SetupPage({ onReady }: { onReady: () => void }) {
   const { client } = useBridge();
   const dongles = usePolling(listDongles, 2000);
   const dongle = dongles.data?.[0] ?? null;
@@ -145,11 +144,6 @@ export function SetupPage() {
   if (done) {
     return (
       <div className="page">
-        <p className="dim">
-          This sets up Wi-Fi and local transfers from this computer. To connect
-          Ember Link to your Ember account for cloud delivery, use
-          emberdesign.net/connect.
-        </p>
         <Section title="Dongle ready">
           <p>
             <Pill tone="ok">connected</Pill> The dongle joined{" "}
@@ -171,6 +165,9 @@ export function SetupPage() {
               ? " and be ready to sew."
               : " and show up on the Machines page."}
           </p>
+          <button className="primary" onClick={onReady}>
+            Go to machines
+          </button>
           <button
             onClick={() => {
               setDone(null);
@@ -191,15 +188,9 @@ export function SetupPage() {
       {!dongle ? (
         <Section title="Set up Ember Link">
           <p className="dim">
-            Connect a dongle to this computer to configure Wi-Fi and local
-            transfers with Bridge. Cloud setup links the dongle to your Ember
-            account and works without Bridge.
+            Configure Wi-Fi and pair Ember Link with this computer for local
+            transfers. No Ember account or web app is required.
           </p>
-          <button
-            onClick={() => void openUrl("https://emberdesign.net/connect")}
-          >
-            Open cloud setup
-          </button>
           <EmptyState>
             Plug an Ember Link dongle into a USB port on this computer. It will
             be detected automatically.

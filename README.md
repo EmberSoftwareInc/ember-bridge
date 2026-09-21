@@ -1,10 +1,17 @@
 # Ember Bridge
 
-Desktop companion for the **Ember** web-based embroidery editor. Bridges the
-browser to WiFi-capable embroidery machines:
+Local desktop app for sending embroidery designs and managing files over Wi-Fi.
+Use it on its own with a supported **Brother Wi-Fi machine** or an **Ember Link**
+dongle; no Ember account or web app is required.
 
-```
-Browser (Ember) ──HTTP──▶ 127.0.0.1:17831 (Ember Bridge) ──HTTPS──▶ machine
+Bridge also lets the **Ember web editor** send designs over your local network.
+A supported Brother Wi-Fi machine needs no dongle for this path. Ember Link cloud
+account setup, cloud transfers, and cloud settings belong exclusively to the
+Ember web app; Bridge handles local operations.
+
+```text
+Local design file ──▶ Ember Bridge ──local Wi-Fi──▶ Brother or Ember Link
+Ember web editor ──localhost API──▶ Ember Bridge ──local Wi-Fi──▶ Brother or Ember Link
 ```
 
 Built with **Tauri v2** (Rust backend, React + TypeScript + Vite frontend).

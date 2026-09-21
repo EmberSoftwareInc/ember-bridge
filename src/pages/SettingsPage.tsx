@@ -4,7 +4,6 @@
  */
 
 import { UpdatePanel } from "../components/UpdatePanel";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
 import type { Settings } from "../api/types";
 import { useBridge } from "../hooks/useBridge";
@@ -64,11 +63,15 @@ export function SettingsPage() {
     <div className="page">
       {error && <ErrorNote>{error}</ErrorNote>}
 
-      <Section title="Bridge">
+      <Section title="Local transfers">
+        <p>
+          Use Machines to find a supported Brother Wi-Fi machine or an Ember
+          Link dongle, then open Send to manage files and send a design from
+          this computer. No Ember account or web app is required.
+        </p>
         <dl className="kv">
-          <dt>Local API</dt>
+          <dt>Local service</dt>
           <dd>
-            http://127.0.0.1:{health.port}{" "}
             {health.serverRunning ? (
               <Pill tone="ok">running</Pill>
             ) : (
@@ -82,27 +85,23 @@ export function SettingsPage() {
         </dl>
       </Section>
 
-      <Section title="Connect Ember to this computer">
+      <Section title="Send from the Ember web app (optional)">
         <p>
-          In the Ember web app, choose Ember Bridge to connect your machine.
-          When this app asks, check the website address and click Approve.
+          You can also send designs from the Ember web app through Bridge over
+          your local Wi-Fi. Supported Brother machines connect directly, without
+          a dongle. Ember Link provides local transfers for other machines.
         </p>
         <p className="dim">
-          Opening Bridge from a website only opens the app. You still approve
-          each new pairing request here.
+          In Ember, choose Ember Bridge. Check the website address in the
+          request shown here, then click Approve. Keep Bridge running while
+          sending. Opening Bridge from a website does not approve the
+          connection.
         </p>
-        <p className="dim">
-          Ember Link cloud setup connects a dongle to your account and works
-          without Bridge. The USB setup here connects it to Wi-Fi and pairs it
-          with this computer for local transfers.
-        </p>
-        <button onClick={() => void openUrl("https://emberdesign.net/connect")}>
-          Open Ember Link cloud setup
-        </button>
       </Section>
       <UpdatePanel />
       <details>
         <summary>Advanced connection settings</summary>
+        <p className="dim">Local API: http://127.0.0.1:{health.port}</p>
         <Section title="Manual pairing token">
           <p className="dim">
             For integrations that cannot use the approval flow, this token

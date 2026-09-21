@@ -13,6 +13,19 @@ application identity. Internal manufacturer ID `emberconnect` remains stable;
 the consumer-facing hardware name is Ember Link. Both old and new mDNS services
 and health names are accepted.
 
+## Product boundary
+
+Bridge is a standalone local app: USB Wi-Fi setup and local pairing, device
+discovery, transfers, file management, diagnostics, and USB firmware installation.
+It requires no Ember account and issues no cloud claim, configuration, enable,
+or disable commands. Existing cloud enrollment stays unchanged. App updates from
+GitHub update Bridge itself, not the dongle's cloud service.
+
+Direct Brother Wi-Fi remains supported. The authenticated browser API and pairing
+flow remain available so Ember's web editor can send locally through Bridge,
+including to supported Brother machines without a dongle. Browser integration is
+optional for desktop users. All cloud-service control belongs to the Ember web app.
+
 ## Browser launch
 
 Use an ordinary user-clicked link such as:

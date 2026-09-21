@@ -11,7 +11,13 @@ import { usePolling } from "../hooks/usePolling";
 import { EmptyState, ErrorNote, Pill, Section } from "../components/ui";
 import { formatBytes, machineLabel } from "../lib/format";
 
-export function MachinesPage() {
+export function MachinesPage({
+  onSetup,
+  onSend,
+}: {
+  onSetup: () => void;
+  onSend: () => void;
+}) {
   const { client, selectedIp, setSelectedIp } = useBridge();
   const machines = usePolling<MachinesResponse>(
     client ? () => client.machines() : null,
@@ -67,6 +73,22 @@ export function MachinesPage() {
 
   return (
     <div className="page">
+      <Section title="Send over local Wi-Fi">
+        <p>
+          Connect this computer and your machine to the same network. Supported
+          Brother Wi-Fi machines connect directly without a dongle; use Ember
+          Link for other machines.
+        </p>
+        <p className="dim">
+          Set up a new Link over USB, or scan for a device already on Wi-Fi.
+          Select your machine below, then open Send to manage files and send
+          designs. No Ember account is required.
+        </p>
+        <button onClick={onSetup}>Set up Ember Link</button>{" "}
+        <button className="primary" disabled={!selectedIp} onClick={onSend}>
+          Open files &amp; send
+        </button>
+      </Section>
       {actionError && <ErrorNote>{actionError}</ErrorNote>}
 
       <Section
