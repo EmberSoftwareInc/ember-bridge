@@ -1,4 +1,4 @@
-//! Desktop (USB) setup for EmberConnect dongles.
+//! Desktop (USB) setup for Ember Link dongles.
 //!
 //! When a dongle is plugged into *this* computer it exposes a CDC serial
 //! port next to its flash-drive volume; over it we can scan WiFi, try
@@ -11,7 +11,7 @@
 //! local hardware, neither of which paired browser origins have any
 //! business reaching. The React UI calls these Tauri commands directly.
 //!
-//! The wire protocol lives in the firmware repo (EmberConnect,
+//! The wire protocol lives in the firmware repo (Ember Link,
 //! `firmware/main/usb_setup.h`); [`link`] implements the transport.
 
 pub mod link;
@@ -41,7 +41,9 @@ const UPDATE_QUIET_TIMEOUT: Duration = Duration::from_secs(30);
 static SESSION: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn session_lock() -> std::sync::MutexGuard<'static, ()> {
-    SESSION.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    SESSION
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -125,6 +127,10 @@ pub async fn dongle_provision(
     password: String,
     name: String,
 ) -> SetupResult<ProvisionOutcome> {
+    let _lifecycle = state
+        .lifecycle
+        .try_read()
+        .map_err(|_| SetupError::new("updating", "Bridge is installing an update"))?;
     let tokens = state.dongle_tokens.clone();
     blocking(move || {
         let _session = session_lock();
@@ -147,7 +153,12 @@ pub async fn dongle_provision(
         // still happen later.
         let mut serial = None;
         let mut paired = false;
-        match link.request("pair", json!({ "name": "Ember Bridge" }), COMMAND_TIMEOUT, |_| {}) {
+        match link.request(
+            "pair",
+            json!({ "name": "Ember Bridge" }),
+            COMMAND_TIMEOUT,
+            |_| {},
+        ) {
             Ok(pair) => {
                 serial = pair
                     .get("serial")
@@ -179,22 +190,32 @@ pub async fn dongle_provision(
 #[tauri::command]
 pub async fn dongle_update_firmware(
     app: tauri::AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
     port: String,
     image_path: String,
 ) -> SetupResult<Value> {
+    let _lifecycle = state
+        .lifecycle
+        .try_read()
+        .map_err(|_| SetupError::new("updating", "Bridge is installing an update"))?;
     blocking(move || {
         let _session = session_lock();
+        if std::fs::metadata(&image_path)
+            .map_err(|e| SetupError::new("image_unreadable", e.to_string()))?
+            .len()
+            > 4 * 1024 * 1024
+        {
+            return Err(SetupError::new(
+                "image_too_large",
+                "Firmware image exceeds 4 MiB",
+            ));
+        }
         let image = std::fs::read(&image_path)
             .map_err(|e| SetupError::new("image_unreadable", format!("{image_path}: {e}")))?;
         let total = image.len() as u64;
 
         let mut link = DongleLink::open(&port)?;
-        link.request(
-            "update",
-            json!({ "size": total }),
-            COMMAND_TIMEOUT,
-            |_| {},
-        )?;
+        link.request("update", json!({ "size": total }), COMMAND_TIMEOUT, |_| {})?;
 
         // The dongle said "ready": stream the image, then collect progress
         // events until the final ok/error response line.

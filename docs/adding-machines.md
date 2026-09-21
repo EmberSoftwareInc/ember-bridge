@@ -4,7 +4,7 @@ The **Machines** page is where you find and manage your embroidery machines.
 Ember Bridge works with two kinds:
 
 - **Brother** WiFi-capable embroidery machines.
-- Any machine using an **EmberConnect** dongle (see
+- Any machine using an **Ember Link** dongle (see
   [Setting up a dongle](dongle-setup.md)).
 
 ## Find machines on your network
@@ -36,14 +36,14 @@ Bridge won't contact addresses out on the public internet.
 - **Remove** — deletes the saved machine from Ember Bridge (it doesn't change
   anything on the machine itself).
 
-## Brother vs. EmberConnect
+## Brother vs. Ember Link
 
 Both kinds appear side by side and work the same way when sending; they differ
 in what they report and which file formats they accept:
 
-| | Brother | EmberConnect dongle |
+| | Brother | Ember Link dongle |
 |---|---|---|
-| Shown as | machine name + model | "EmberConnect dongle" |
+| Shown as | machine name + model | "Ember Link dongle" |
 | Reports memory & area | Yes | Not always |
 | Accepted formats | pes, phc, dst, phx | pes, pec, dst, exp, jef, vp3, hus, vip, xxx |
 
@@ -52,3 +52,12 @@ in what they report and which file formats they accept:
 Machines get their IP address from your router, and it can change (for example
 after a reboot). If a saved machine stops responding, run **Scan network**
 again, or remove it and re-add it at its new address.
+
+## When a device’s address changes
+
+Bridge remembers the device’s manufacturer and serial when you save a discovered
+device, or first successfully connect to a manually added device. A later scan
+updates its address while keeping its nickname. Before uploading, Bridge checks
+that identity again and rediscovers a moved device. A different serial at the old
+address is refused. Devices that do not report a serial can only be tracked by
+address; confirm the intended machine when adding one manually.

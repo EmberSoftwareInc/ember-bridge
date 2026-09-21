@@ -8,7 +8,8 @@ import { BridgeProvider, useBridge } from "./hooks/useBridge";
 import { usePolling } from "./hooks/usePolling";
 import type { BridgeStatus, PendingPairing } from "./api/types";
 import type { BridgeClient } from "./api/client";
-import { listDongles } from "./api/dongle";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import emberIcon from "./assets/ember-icon.svg";
 import { MachinesPage } from "./pages/MachinesPage";
 import { SetupPage } from "./pages/SetupPage";
@@ -60,13 +61,21 @@ function PairingBanner({ client }: { client: BridgeClient }) {
       <div className="pairing-text">
         <strong>{request.origin}</strong>
         {request.appName !== "Unnamed app" && ` (${request.appName})`} wants to
-        connect to your embroidery machines.
+        connect to machines on your local network.
       </div>
       <div className="pairing-actions">
-        <button className="danger" disabled={busy} onClick={() => respond(false)}>
+        <button
+          className="danger"
+          disabled={busy}
+          onClick={() => respond(false)}
+        >
           Deny
         </button>
-        <button className="primary" disabled={busy} onClick={() => respond(true)}>
+        <button
+          className="primary"
+          disabled={busy}
+          onClick={() => respond(true)}
+        >
           Approve
         </button>
       </div>
@@ -82,14 +91,29 @@ function Shell() {
     5000,
   );
 
-  // The setup entry only exists while a dongle is physically plugged into
-  // this computer (cheap USB enumeration, no port is opened).
-  const dongles = usePolling(listDongles, 3000);
-  const donglePresent = (dongles.data?.length ?? 0) > 0;
   useEffect(() => {
-    // Unplugged while on the (now hidden) setup page: don't strand the user.
-    if (page === "setup" && !donglePresent) setPage("machines");
-  }, [page, donglePresent]);
+    let stopped = false;
+    let unlisten: (() => void) | undefined;
+    const navigate = async () => {
+      const next = await invoke<string | null>("take_navigation");
+      if (!stopped && next && ["machines", "settings", "setup"].includes(next))
+        setPage(next as Page);
+    };
+    void listen("bridge-navigation", () => {
+      void navigate();
+    }).then((off) => {
+      if (stopped) {
+        off();
+        return;
+      }
+      unlisten = off;
+      void navigate();
+    });
+    return () => {
+      stopped = true;
+      unlisten?.();
+    };
+  }, []);
 
   if (connectError) {
     return (
@@ -118,26 +142,33 @@ function Shell() {
             )}
           </button>
         ))}
-        {donglePresent && (
+        {
           <button
             className={`nav-item setup-cta ${page === "setup" ? "active" : ""}`}
             onClick={() => setPage("setup")}
           >
-            Ember Connect Set Up
+            Set up Ember Link
           </button>
-        )}
+        }
         <div className="sidebar-footer">
-          <div className={`dot ${status.data?.server.running ? "dot-ok" : "dot-err"}`} />
+          <div
+            className={`dot ${status.data?.server.running ? "dot-ok" : "dot-err"}`}
+          />
           {status.data?.server.running
-            ? `API on :${status.data.server.port}`
-            : "API offline"}
+            ? "Local bridge ready"
+            : "Bridge offline"}
           {selectedIp && <div className="dim">Target: {selectedIp}</div>}
         </div>
       </nav>
       <main className="content">
         {client && <PairingBanner client={client} />}
-        {page === "machines" && <MachinesPage />}
-        {page === "setup" && <SetupPage />}
+        {page === "machines" && (
+          <MachinesPage
+            onSetup={() => setPage("setup")}
+            onSend={() => setPage("send")}
+          />
+        )}
+        {page === "setup" && <SetupPage onReady={() => setPage("machines")} />}
         {page === "send" && <SendPage />}
         {page === "logs" && <LogsPage />}
         {page === "settings" && <SettingsPage />}

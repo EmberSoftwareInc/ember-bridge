@@ -22,13 +22,13 @@ the file name and size you selected.
 
 ### Which file formats work?
 
-The file picker shows a broad list of embroidery formats, but **each machine
+The file picker uses the selected device’s advertised formats. **Each machine
 only accepts its own**:
 
 | Machine | Accepted formats |
 |---|---|
 | Brother | pes, phc, dst, phx |
-| EmberConnect dongle | pes, pec, dst, exp, jef, vp3, hus, vip, xxx |
+| Ember Link dongle | pes, pec, dst, exp, jef, vp3, hus, vip, xxx |
 
 If you send a format a machine doesn't accept, the upload fails with a message
 telling you which formats it does accept.
@@ -46,6 +46,9 @@ Every send appears in the **Upload queue** with its status:
 | Status | Meaning |
 |---|---|
 | queued | Waiting its turn |
+| waiting for device | A local/cloud transfer or firmware update is busy; Bridge waits up to about a minute |
+| cancelled | Cancelled before transmission |
+| check device | Delivery is uncertain; inspect the device and confirm whether the file arrived |
 | uploading | In progress, with a progress bar |
 | done | Delivered — shows **Stored on machine as …** if the machine renamed it |
 | failed | Didn't go through — shows the reason |
@@ -54,3 +57,21 @@ Uploads run **one at a time**. While any are pending, the **Send** item in the
 sidebar shows a badge with the count. Machines commonly rename an uploaded file
 to their own numbering scheme — that's normal, and the stored name is shown on
 the finished job.
+
+## Files, cancellation, and recovery
+
+Search the file list above the send controls. Ember Link supports deleting files;
+Bridge asks for confirmation first. Brother’s protocol does not support deletion
+here. Sending a name already on Ember Link asks for replacement confirmation.
+The firmware serializes writes, but a cloud upload can change the file list after
+Bridge reads it; avoid simultaneous local and cloud sends of the same filename.
+
+Cancel queued or waiting transfers from the queue. An upload already transmitting
+cannot be safely cancelled. If the response is lost, Bridge does not retry it.
+Check the device, then choose **The file arrived** or **The file did not arrive**.
+Further sends to that device remain blocked until the uncertain outcome is resolved.
+
+History survives app restarts (100 completed transfers, plus unresolved outcomes).
+Queued file contents are held only in memory, bounded to 128 MiB and 32 waiting
+jobs. Restarted queued jobs fail without replaying; interrupted uploads require
+checking the device. Pick the original file again if a resend is needed.

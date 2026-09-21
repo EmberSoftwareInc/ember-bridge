@@ -23,3 +23,6 @@ pages-dist
 *.njsproj
 *.sln
 *.sw?
+
+# Private release signing material; never commit.
+.release-keys/

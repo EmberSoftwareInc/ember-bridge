@@ -15,8 +15,8 @@ use super::models::{
 };
 use super::tokens::TokenStore;
 use crate::machine::{
-    EmbroideryMachine, MachineCapabilities, MachineError, MachineIdentity, MachineInfo,
-    ProgressFn, StorageStatus, UploadProgress, UploadReceipt, UploadRequest,
+    EmbroideryMachine, MachineCapabilities, MachineError, MachineIdentity, MachineInfo, ProgressFn,
+    StorageStatus, UploadProgress, UploadReceipt, UploadRequest,
 };
 use async_trait::async_trait;
 use std::net::IpAddr;
@@ -27,7 +27,9 @@ use std::time::Duration;
 /// Formats commonly readable from a USB stick across manufacturers. The
 /// dongle itself stores anything; the machine behind it decides what it can
 /// load, and we cannot see that machine — so advertise the broad set.
-pub const COMMON_FORMATS: &[&str] = &["pes", "pec", "dst", "exp", "jef", "vp3", "hus", "vip", "xxx"];
+pub const COMMON_FORMATS: &[&str] = &[
+    "pes", "pec", "dst", "exp", "jef", "vp3", "hus", "vip", "xxx",
+];
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(4);
 const READ_TIMEOUT: Duration = Duration::from_secs(10);
@@ -36,8 +38,8 @@ const UPLOAD_TIMEOUT: Duration = Duration::from_secs(180);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3);
 
 const READ_RETRIES: u32 = 3;
-/// Uploads are overwrite-by-name on the dongle, so retrying is safe.
-const UPLOAD_RETRIES: u32 = 2;
+/// Never replay an upload after an ambiguous response.
+const UPLOAD_RETRIES: u32 = 1;
 const RETRY_DELAY: Duration = Duration::from_millis(1000);
 
 /// How this computer introduces itself when pairing; the dongle shows the
@@ -148,9 +150,10 @@ impl EmberConnectClient {
             return Err(MachineError::PairingRequired { hint });
         }
 
-        let body: PairResponse = response.json().await.map_err(|e| {
-            MachineError::Protocol(format!("pair response is not valid JSON: {e}"))
-        })?;
+        let body: PairResponse = response
+            .json()
+            .await
+            .map_err(|e| MachineError::Protocol(format!("pair response is not valid JSON: {e}")))?;
         let serial = match body.serial {
             Some(s) => Some(s),
             None => self.serial().await?,
@@ -206,7 +209,12 @@ impl EmberConnectClient {
         MachineInfo {
             identity: MachineIdentity {
                 manufacturer: super::MANUFACTURER.to_string(),
-                model: "EmberConnect dongle".to_string(),
+                model: if health.name == "Ember Link" {
+                    "Ember Link"
+                } else {
+                    "EmberConnect dongle"
+                }
+                .to_string(),
                 // The name the user gave the machine during setup; for
                 // unnamed (or pre-0.5.0) dongles, fall back to the
                 // setup-hotspot / mDNS naming so users still recognize it.
@@ -217,7 +225,7 @@ impl EmberConnectClient {
                             .serial
                             .as_ref()
                             .filter(|s| s.len() >= 4)
-                            .map(|s| format!("EmberConnect-{}", &s[s.len() - 4..]))
+                            .map(|s| format!("Ember Link {}", &s[s.len() - 4..]))
                     }),
                 firmware: health.version.clone(),
                 serial: health.serial.clone(),
@@ -229,7 +237,9 @@ impl EmberConnectClient {
                 emb_height_mm: None,
                 needles: None,
                 // Bounded by card space, which is checked live per upload.
-                max_file_bytes: None,
+                max_file_bytes: Some(32 * 1024 * 1024),
+                can_delete_files: true,
+                overwrites_by_name: true,
                 formats: COMMON_FORMATS.iter().map(|s| s.to_string()).collect(),
             },
         }
@@ -269,6 +279,24 @@ impl EmbroideryMachine for EmberConnectClient {
         })
     }
 
+    async fn delete_file(&self, filename: &str) -> Result<(), MachineError> {
+        let mut url = reqwest::Url::parse(&self.url("/api/files/")).expect("static URL");
+        url.path_segments_mut()
+            .expect("HTTP URL")
+            .pop_if_empty()
+            .push(filename);
+        let mut request = self.http.delete(url).timeout(READ_TIMEOUT);
+        if let Some(token) = self.stored_token().await? {
+            request = request.bearer_auth(token);
+        }
+        let response = request.send().await.map_err(map_transport_error)?;
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(map_api_error(response.status().as_u16(), response, 0).await)
+        }
+    }
+
     async fn upload(
         &self,
         request: UploadRequest,
@@ -303,17 +331,15 @@ impl EmbroideryMachine for EmberConnectClient {
                     .map(bytes::Bytes::copy_from_slice)
                     .collect();
                 let progress_stream = progress.clone();
-                let stream = futures::stream::iter(chunks.into_iter().scan(
-                    0u64,
-                    move |sent, chunk| {
+                let stream =
+                    futures::stream::iter(chunks.into_iter().scan(0u64, move |sent, chunk| {
                         *sent += chunk.len() as u64;
                         progress_stream(UploadProgress {
                             sent_bytes: (*sent).min(size),
                             total_bytes: size,
                         });
                         Some(Ok::<_, std::io::Error>(chunk))
-                    },
-                ));
+                    }));
 
                 let mut request = self
                     .http
@@ -325,13 +351,16 @@ impl EmbroideryMachine for EmberConnectClient {
                 if let Some(token) = self.stored_token().await? {
                     request = request.bearer_auth(token);
                 }
-                let response = request.send().await.map_err(map_transport_error)?;
+                let response = request
+                    .send()
+                    .await
+                    .map_err(|_| MachineError::DeliveryUnknown)?;
 
                 let status = response.status();
                 if status.as_u16() == 401 {
                     // Rare here — the free-space check above already paired —
                     // but the token can be revoked between the two calls.
-                    // Pair now and let the retry loop re-send with it.
+                    // Pair for the next user-initiated send; this body is not replayed.
                     if let Some(serial) = self.serial().await? {
                         self.tokens.forget(&serial);
                     }
@@ -344,8 +373,12 @@ impl EmbroideryMachine for EmberConnectClient {
                     return Err(map_api_error(status.as_u16(), response, size).await);
                 }
                 let body: UploadResponse = response.json().await.map_err(|e| {
-                    MachineError::Protocol(format!("upload response is not valid JSON: {e}"))
+                    let _ = e;
+                    MachineError::DeliveryUnknown
                 })?;
+                if !body.ok {
+                    return Err(MachineError::DeliveryUnknown);
+                }
                 progress(UploadProgress {
                     sent_bytes: size,
                     total_bytes: size,
@@ -368,7 +401,10 @@ async fn decode_json<T: serde::de::DeserializeOwned>(
 ) -> Result<T, MachineError> {
     let status = response.status();
     if !status.is_success() {
-        return Err(MachineError::Protocol(format!("HTTP {status}")));
+        return Err(match map_api_error(status.as_u16(), response, 0).await {
+            MachineError::DeliveryUnknown => MachineError::Protocol(format!("HTTP {status}")),
+            other => other,
+        });
     }
     response
         .json::<T>()
@@ -383,10 +419,12 @@ async fn map_api_error(status: u16, response: reqwest::Response, size: u64) -> M
         .map(|e| e.error.code)
         .unwrap_or_default();
     match code.as_str() {
+        "busy" | "storage_busy" => MachineError::Busy,
         "insufficient_storage" => MachineError::InsufficientStorage { size, free: 0 },
         "invalid_filename" => MachineError::Protocol(
             "the dongle rejected the filename (FAT-illegal characters?)".to_string(),
         ),
+        _ if status >= 500 => MachineError::DeliveryUnknown,
         _ => MachineError::UploadFailed(status),
     }
 }
@@ -420,11 +458,15 @@ where
     for i in 0..attempts {
         match attempt().await {
             Ok(value) => return Ok(value),
-            Err(e @ (MachineError::Rejected { .. }
-            | MachineError::FileTooLarge { .. }
-            | MachineError::InsufficientStorage { .. }
-            | MachineError::UnsupportedFormat { .. }
-            | MachineError::PairingRequired { .. })) => return Err(e),
+            Err(
+                e @ (MachineError::Busy
+                | MachineError::DeliveryUnknown
+                | MachineError::Rejected { .. }
+                | MachineError::FileTooLarge { .. }
+                | MachineError::InsufficientStorage { .. }
+                | MachineError::UnsupportedFormat { .. }
+                | MachineError::PairingRequired { .. }),
+            ) => return Err(e),
             Err(e) => {
                 last = Some(e);
                 if i + 1 < attempts {

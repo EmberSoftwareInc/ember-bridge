@@ -19,6 +19,8 @@ export interface MachineCapabilities {
   needles: number | null;
   maxFileBytes: number | null;
   formats: string[];
+  canDeleteFiles: boolean;
+  overwritesByName: boolean;
 }
 
 export interface MachineInfo {
@@ -42,6 +44,8 @@ export interface SavedMachine {
   ip: string;
   nickname?: string;
   manufacturer?: string;
+  serial?: string;
+  previousIps?: string[];
 }
 
 export interface DiscoveredMachine {
@@ -55,7 +59,14 @@ export interface MachinesResponse {
   discoveryRunning: boolean;
 }
 
-export type JobState = "queued" | "uploading" | "done" | "failed";
+export type JobState =
+  | "queued"
+  | "uploading"
+  | "done"
+  | "failed"
+  | "waiting"
+  | "cancelled"
+  | "needs_reconciliation";
 
 export interface JobRecord {
   id: string;

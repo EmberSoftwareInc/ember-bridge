@@ -6,6 +6,7 @@
 
 pub mod auth;
 pub mod error;
+pub mod identity;
 pub mod jobs;
 pub mod pairing;
 pub mod routes;
@@ -40,6 +41,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/pairing", get(routes::pairing_pending))
         .route("/api/pairing/respond", post(routes::pairing_respond))
         .route("/api/send", post(routes::send))
+        .route("/api/files", delete(routes::delete_file))
+        .route("/api/jobs/{id}/cancel", post(routes::cancel_job))
+        .route("/api/jobs/{id}/resolve", post(routes::resolve_job))
         .route("/api/jobs", get(routes::list_jobs))
         .route("/api/jobs/{id}", get(routes::get_job))
         .route("/api/logs", get(routes::logs))
@@ -92,3 +96,6 @@ pub async fn serve(state: Arc<AppState>) {
         health.error = Some(e.to_string());
     }
 }
+
+#[cfg(test)]
+pub(crate) mod test_support;

@@ -126,14 +126,54 @@ export class BridgeClient {
 
   // -- Uploads --------------------------------------------------------------
 
-  async send(ip: string, filename: string, data: ArrayBuffer): Promise<JobRecord> {
-    const query = `ip=${encodeURIComponent(ip)}&filename=${encodeURIComponent(filename)}`;
-    const result = await this.request<{ job: JobRecord }>(`/api/send?${query}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/octet-stream" },
-      body: data,
+  async send(
+    ip: string,
+    filename: string,
+    data: ArrayBuffer,
+    identity?: { manufacturer: string; serial: string | null },
+    overwrite = false,
+  ): Promise<JobRecord> {
+    const query = new URLSearchParams({
+      ip,
+      filename,
+      overwrite: String(overwrite),
+      ...(identity?.serial
+        ? { manufacturer: identity.manufacturer, serial: identity.serial }
+        : {}),
     });
+    const result = await this.request<{ job: JobRecord }>(
+      `/api/send?${query}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: data,
+      },
+    );
     return result.job;
+  }
+
+  deleteFile(
+    ip: string,
+    filename: string,
+    manufacturer: string,
+    serial: string,
+  ): Promise<{ ok: boolean }> {
+    return this.request(
+      `/api/files?${new URLSearchParams({ ip, filename, manufacturer, serial, confirmed: "true" })}`,
+      { method: "DELETE" },
+    );
+  }
+  cancelJob(id: string): Promise<{ job: JobRecord }> {
+    return this.request(`/api/jobs/${encodeURIComponent(id)}/cancel`, {
+      method: "POST",
+    });
+  }
+  resolveJob(id: string, delivered: boolean): Promise<{ job: JobRecord }> {
+    return this.request(`/api/jobs/${encodeURIComponent(id)}/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ delivered }),
+    });
   }
 
   async jobs(): Promise<JobRecord[]> {

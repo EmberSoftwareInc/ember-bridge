@@ -1,6 +1,6 @@
 [package]
 name = "ember-bridge"
-version = "0.4.2"
+version = "0.5.0"
 description = "Ember Bridge — desktop bridge between the Ember embroidery editor and WiFi-capable embroidery machines"
 authors = ["Ember"]
 edition = "2021"
@@ -18,6 +18,9 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-updater = "2"
 # Launch-on-login (LaunchAgent on macOS, registry/desktop entry elsewhere).
 tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }

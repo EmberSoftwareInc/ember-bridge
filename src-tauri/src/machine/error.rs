@@ -9,6 +9,16 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum MachineError {
+    #[error("Ember Link is busy with another transfer or firmware update")]
+    Busy,
+    #[error("Delivery could not be confirmed. Check the file on the device before sending again.")]
+    DeliveryUnknown,
+    #[error("The device identity changed. Scan again and select the intended machine.")]
+    IdentityChanged,
+    #[error("This device does not support that operation")]
+    UnsupportedOperation,
+    #[error("A file with this name exists. Confirm replacement before sending.")]
+    FileExists,
     /// TCP/TLS level failure: host down, wrong IP, connection refused.
     #[error("machine unreachable: {0}")]
     Unreachable(String),
@@ -52,6 +62,11 @@ impl MachineError {
     /// Stable machine-readable error code exposed by the localhost API.
     pub fn code(&self) -> &'static str {
         match self {
+            Self::Busy => "device_busy",
+            Self::DeliveryUnknown => "delivery_unknown",
+            Self::IdentityChanged => "identity_changed",
+            Self::UnsupportedOperation => "unsupported_operation",
+            Self::FileExists => "file_exists",
             MachineError::Unreachable(_) => "machine_unreachable",
             MachineError::Timeout => "machine_timeout",
             MachineError::Protocol(_) => "protocol_error",

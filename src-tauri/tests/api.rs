@@ -85,7 +85,13 @@ async fn health_needs_no_token() {
 #[tokio::test]
 async fn everything_else_requires_the_token() {
     let app = test_app().await;
-    for path in ["/api/status", "/api/machines", "/api/jobs", "/api/logs", "/api/settings"] {
+    for path in [
+        "/api/status",
+        "/api/machines",
+        "/api/jobs",
+        "/api/logs",
+        "/api/settings",
+    ] {
         let response = app
             .router
             .clone()
@@ -152,7 +158,11 @@ async fn x_ember_token_header_also_works() {
 #[tokio::test]
 async fn public_and_loopback_targets_are_refused() {
     let app = test_app().await;
-    for (ip, expected_code) in [("8.8.8.8", "ip_not_local"), ("127.0.0.1", "ip_not_local"), ("nonsense", "invalid_ip")] {
+    for (ip, expected_code) in [
+        ("8.8.8.8", "ip_not_local"),
+        ("127.0.0.1", "ip_not_local"),
+        ("nonsense", "invalid_ip"),
+    ] {
         let response = app
             .router
             .clone()
@@ -187,7 +197,10 @@ async fn send_validates_before_queueing() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    assert_eq!(body_json(response).await["error"]["code"], "missing_filename");
+    assert_eq!(
+        body_json(response).await["error"]["code"],
+        "missing_filename"
+    );
 
     // Empty body.
     let response = app
@@ -343,7 +356,9 @@ async fn settings_roundtrip_updates_allowed_origins() {
             Request::put("/api/settings")
                 .header(header::AUTHORIZATION, &auth)
                 .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(r#"{"allowedOrigins":["https://ember.example/"]}"#))
+                .body(Body::from(
+                    r#"{"allowedOrigins":["https://ember.example/"]}"#,
+                ))
                 .unwrap(),
         )
         .await
@@ -578,7 +593,10 @@ async fn pairing_rejects_unknown_origins() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    assert_eq!(body_json(response).await["error"]["code"], "origin_not_allowed");
+    assert_eq!(
+        body_json(response).await["error"]["code"],
+        "origin_not_allowed"
+    );
 }
 
 /// The result of a pairing request is only visible to the origin that
@@ -653,4 +671,93 @@ async fn non_loopback_host_is_rejected() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn new_mutations_require_authentication() {
+    let app = test_app().await;
+    for (method, path) in [
+        (
+            Method::DELETE,
+            "/api/files?ip=192.168.1.4&filename=rose.pes&confirmed=true",
+        ),
+        (Method::POST, "/api/jobs/x/cancel"),
+        (Method::POST, "/api/jobs/x/resolve"),
+    ] {
+        let response = app
+            .router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(method)
+                    .uri(path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+}
+#[tokio::test]
+async fn deletion_requires_confirmation_and_identity_before_network_access() {
+    let app = test_app().await;
+    for (query, code) in [
+        ("ip=192.168.1.4&filename=rose.pes", "confirmation_required"),
+        (
+            "ip=192.168.1.4&filename=rose.pes&confirmed=true",
+            "identity_required",
+        ),
+        (
+            "ip=192.168.1.4&filename=../rose.pes&confirmed=true",
+            "invalid_filename",
+        ),
+    ] {
+        let response = app
+            .router
+            .clone()
+            .oneshot(
+                Request::delete(format!("/api/files?{query}"))
+                    .header(header::AUTHORIZATION, format!("Bearer {}", app.token))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(body_json(response).await["error"]["code"], code);
+    }
+}
+#[tokio::test]
+async fn queued_send_can_be_cancelled_through_the_api() {
+    let app = test_app().await;
+    let response = app
+        .router
+        .clone()
+        .oneshot(
+            Request::post("/api/send?ip=192.168.1.4&filename=rose.pes")
+                .header(header::AUTHORIZATION, format!("Bearer {}", app.token))
+                .body(Body::from("design"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+    let id = body_json(response).await["job"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let response = app
+        .router
+        .clone()
+        .oneshot(
+            Request::post(format!("/api/jobs/{id}/cancel"))
+                .header(header::AUTHORIZATION, format!("Bearer {}", app.token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(body_json(response).await["job"]["state"], "cancelled");
 }

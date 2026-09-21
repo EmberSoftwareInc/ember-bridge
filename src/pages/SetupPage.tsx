@@ -1,5 +1,5 @@
 /**
- * Dongle setup page: the out-of-box flow for an EmberConnect dongle plugged
+ * Dongle setup page: the out-of-box flow for an Ember Link dongle plugged
  * into *this* computer via USB.
  *
  * plug in → pick a WiFi network (scanned by the dongle's own radio) → enter
@@ -25,13 +25,19 @@ import {
 } from "../api/dongle";
 import { useBridge } from "../hooks/useBridge";
 import { usePolling } from "../hooks/usePolling";
-import { EmptyState, ErrorNote, Pill, ProgressBar, Section } from "../components/ui";
+import {
+  EmptyState,
+  ErrorNote,
+  Pill,
+  ProgressBar,
+  Section,
+} from "../components/ui";
 
 function signalBars(rssi: number): string {
   return rssi > -55 ? "▮▮▮" : rssi > -70 ? "▮▮▯" : "▮▯▯";
 }
 
-export function SetupPage() {
+export function SetupPage({ onReady }: { onReady: () => void }) {
   const { client } = useBridge();
   const dongles = usePolling(listDongles, 2000);
   const dongle = dongles.data?.[0] ?? null;
@@ -150,13 +156,18 @@ export function SetupPage() {
                 "."}
           </p>
           <p>
-            <strong>Unplug it from this computer and plug it into your
-            embroidery machine.</strong>{" "}
+            <strong>
+              Unplug it from this computer and plug it into your embroidery
+              machine.
+            </strong>{" "}
             It will reconnect to your WiFi on its own
             {savedToMachines
               ? " and be ready to sew."
               : " and show up on the Machines page."}
           </p>
+          <button className="primary" onClick={onReady}>
+            Go to machines
+          </button>
           <button
             onClick={() => {
               setDone(null);
@@ -175,10 +186,14 @@ export function SetupPage() {
       {error && <ErrorNote>{error}</ErrorNote>}
 
       {!dongle ? (
-        <Section title="Set up a dongle">
+        <Section title="Set up Ember Link">
+          <p className="dim">
+            Configure Wi-Fi and pair Ember Link with this computer for local
+            transfers. No Ember account or web app is required.
+          </p>
           <EmptyState>
-            Plug an EmberConnect dongle into a USB port on this computer.
-            It will be detected automatically.
+            Plug an Ember Link dongle into a USB port on this computer. It will
+            be detected automatically.
           </EmptyState>
         </Section>
       ) : (
@@ -248,8 +263,8 @@ export function SetupPage() {
             )}
             <p className="dim">
               The list comes from the dongle's own radio, so it only shows
-              networks it can join. It can't see 5 GHz-only networks — use
-              your router's 2.4 GHz band.
+              networks it can join. It can't see 5 GHz-only networks — use your
+              router's 2.4 GHz band.
             </p>
           </Section>
 
@@ -348,12 +363,20 @@ function FirmwareUpdate({
   return (
     <Section title="Firmware update (advanced)">
       <p className="dim">
-        Running version {version}. Point at a signed EmberConnect image
-        (ember-connect.bin) to update over USB — the dongle rejects anything
-        not signed with the EmberConnect key.
+        Running version {version}. Point at a signed Ember Link image
+        (ember-link.bin) to update over USB — the dongle rejects anything not
+        signed with the Ember Link key.
       </p>
-      <p className={updating ? "update-safety update-safety-active" : "update-safety"}>
-        <strong>{updating ? "Update in progress — do not unplug the dongle or close Ember Bridge." : "Keep the dongle plugged in for the entire update."}</strong>{" "}
+      <p
+        className={
+          updating ? "update-safety update-safety-active" : "update-safety"
+        }
+      >
+        <strong>
+          {updating
+            ? "Update in progress — do not unplug the dongle or close Ember Bridge."
+            : "Keep the dongle plugged in for the entire update."}
+        </strong>{" "}
         {updating
           ? "Wait until Ember Bridge says the update was verified and the dongle is rebooting."
           : "If power is interrupted, the dongle should retain its previous bootable firmware, but the update will need to be tried again."}
@@ -366,7 +389,7 @@ function FirmwareUpdate({
         }}
       >
         <input
-          placeholder="/path/to/ember-connect.bin"
+          placeholder="/path/to/ember-link.bin"
           value={imagePath}
           disabled={busy || updating}
           onChange={(e) => setImagePath(e.target.value)}
@@ -375,7 +398,9 @@ function FirmwareUpdate({
           {updating ? "Updating…" : "Update firmware"}
         </button>
       </form>
-      {progress && <ProgressBar value={progress.written} max={progress.total} />}
+      {progress && (
+        <ProgressBar value={progress.written} max={progress.total} />
+      )}
       {result && <p>{result}</p>}
     </Section>
   );

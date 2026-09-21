@@ -16,8 +16,8 @@
 use super::models::{BrotherInfo, SewingResponse};
 use super::protocol;
 use crate::machine::{
-    EmbroideryMachine, MachineCapabilities, MachineError, MachineIdentity, MachineInfo,
-    ProgressFn, StorageStatus, UploadProgress, UploadReceipt, UploadRequest,
+    EmbroideryMachine, MachineCapabilities, MachineError, MachineIdentity, MachineInfo, ProgressFn,
+    StorageStatus, UploadProgress, UploadReceipt, UploadRequest,
 };
 use async_trait::async_trait;
 use rand::Rng;
@@ -39,7 +39,7 @@ const PROBE_TIMEOUT: Duration = Duration::from_secs(4);
 
 /// Retry counts, mirroring the tolerances of the reference implementation.
 const READ_RETRIES: u32 = 4;
-const UPLOAD_RETRIES: u32 = 2;
+const UPLOAD_RETRIES: u32 = 1;
 const RETRY_DELAY: Duration = Duration::from_millis(1500);
 
 /// A handle to one Brother machine. Cheap to create; owns a lazy HTTP client.
@@ -166,17 +166,15 @@ impl BrotherClient {
                     .chunks(64 * 1024)
                     .map(bytes::Bytes::copy_from_slice)
                     .collect();
-                let stream = futures::stream::iter(chunks.into_iter().scan(
-                    0u64,
-                    move |sent, chunk| {
+                let stream =
+                    futures::stream::iter(chunks.into_iter().scan(0u64, move |sent, chunk| {
                         *sent += chunk.len() as u64;
                         progress(UploadProgress {
                             sent_bytes: sent.saturating_sub(overhead).min(total),
                             total_bytes: total,
                         });
                         Some(Ok::<_, std::io::Error>(chunk))
-                    },
-                ));
+                    }));
 
                 let response = self
                     .http
@@ -195,13 +193,14 @@ impl BrotherClient {
                     .body(reqwest::Body::wrap_stream(stream))
                     .send()
                     .await
-                    .map_err(map_transport_error)?;
+                    .map_err(|_| MachineError::DeliveryUnknown)?;
 
                 match response.status().as_u16() {
                     200 | 204 => {
                         report(total);
                         Ok(())
                     }
+                    500..=599 => Err(MachineError::DeliveryUnknown),
                     other => Err(MachineError::UploadFailed(other)),
                 }
             }
@@ -228,6 +227,8 @@ impl BrotherClient {
                 emb_height_mm: raw.features.embheight.map(|v| v as f64 / 10.0),
                 needles: raw.features.needles,
                 max_file_bytes: raw.features.postsize,
+                can_delete_files: false,
+                overwrites_by_name: false,
                 formats: SUPPORTED_FORMATS.iter().map(|s| s.to_string()).collect(),
             },
         }
@@ -391,10 +392,12 @@ where
     for i in 0..attempts {
         match attempt().await {
             Ok(value) => return Ok(value),
-            Err(e @ (MachineError::Rejected { .. }
-            | MachineError::FileTooLarge { .. }
-            | MachineError::InsufficientStorage { .. }
-            | MachineError::UnsupportedFormat { .. })) => return Err(e),
+            Err(
+                e @ (MachineError::Rejected { .. }
+                | MachineError::FileTooLarge { .. }
+                | MachineError::InsufficientStorage { .. }
+                | MachineError::UnsupportedFormat { .. }),
+            ) => return Err(e),
             Err(e) => {
                 last = Some(e);
                 if i + 1 < attempts {
