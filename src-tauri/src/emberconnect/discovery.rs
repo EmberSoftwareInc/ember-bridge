@@ -12,18 +12,18 @@ use std::collections::HashSet;
 use std::net::IpAddr;
 use std::time::Duration;
 
-const SERVICE_TYPE: &str = "_ember-connect._tcp.local.";
+const SERVICE_TYPES: &[&str] = &["_ember-link._tcp.local.", "_ember-connect._tcp.local."];
 /// How long to listen for announcements. Dongles answer the initial query
 /// within tens of milliseconds; two seconds is generous for lossy WiFi.
 const BROWSE_WINDOW: Duration = Duration::from_secs(2);
 
 /// Browse mDNS for dongle candidates. Blocking (the mdns-sd daemon is
 /// thread-based); run via `spawn_blocking`.
-fn browse_candidates() -> Vec<IpAddr> {
+fn browse_candidates_for(service: &str) -> Vec<IpAddr> {
     let Ok(daemon) = ServiceDaemon::new() else {
         return Vec::new();
     };
-    let Ok(receiver) = daemon.browse(SERVICE_TYPE) else {
+    let Ok(receiver) = daemon.browse(service) else {
         return Vec::new();
     };
 
@@ -41,7 +41,10 @@ fn browse_candidates() -> Vec<IpAddr> {
     let _ = daemon.shutdown();
 
     // Dongles are IPv4 on home networks; keep orderings stable for the UI.
-    let mut candidates: Vec<IpAddr> = found.into_iter().filter(|ip| ip.is_ipv4()).collect();
+    let mut candidates: Vec<IpAddr> = found
+        .into_iter()
+        .filter(|ip| crate::machine::net::is_local_network_ip(*ip))
+        .collect();
     candidates.sort();
     candidates
 }
@@ -51,9 +54,17 @@ pub async fn discover(
     backend: &super::EmberConnectBackend,
     on_progress: ScanProgressFn,
 ) -> Vec<DiscoveredMachine> {
-    let candidates = tokio::task::spawn_blocking(browse_candidates)
-        .await
-        .unwrap_or_default();
+    let candidates = tokio::task::spawn_blocking(|| {
+        let mut all: Vec<_> = SERVICE_TYPES
+            .iter()
+            .flat_map(|s| browse_candidates_for(s))
+            .collect();
+        all.sort();
+        all.dedup();
+        all
+    })
+    .await
+    .unwrap_or_default();
 
     let total = candidates.len().max(1);
     if candidates.is_empty() {

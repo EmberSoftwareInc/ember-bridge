@@ -23,7 +23,7 @@ pub struct Health {
 
 impl Health {
     pub fn is_ember_connect(&self) -> bool {
-        self.ok && self.name == "EmberConnect"
+        self.ok && matches!(self.name.as_str(), "EmberConnect" | "Ember Link")
     }
 }
 
@@ -114,8 +114,7 @@ mod tests {
     #[test]
     fn foreign_devices_are_not_ours() {
         // Some random LAN thing answering 200 with JSON on port 80.
-        let health: Health =
-            serde_json::from_str(r#"{"ok":true,"name":"SmartToaster"}"#).unwrap();
+        let health: Health = serde_json::from_str(r#"{"ok":true,"name":"SmartToaster"}"#).unwrap();
         assert!(!health.is_ember_connect());
         // Non-JSON-matching shapes should still deserialize leniently.
         let health: Health = serde_json::from_str(r#"{}"#).unwrap();

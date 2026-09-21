@@ -15,6 +15,7 @@
 
 pub mod brother;
 pub mod config;
+mod desktop;
 pub mod dongle_setup;
 pub mod emberconnect;
 pub mod logging;
@@ -29,7 +30,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, WindowEvent,
 };
-use tauri_plugin_autostart::{ManagerExt, MacosLauncher};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 /// Bring the main window to the foreground. Shared by the tray (show item and
 /// left-click) and by an incoming pairing request, which must never be missed.
@@ -76,6 +77,11 @@ pub fn run() {
         .init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app)
+        }))
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         // Autostart launches the app with `--minimized` so a login-time start
         // boots straight to the tray without popping the window.
@@ -180,8 +186,8 @@ pub fn run() {
                     }
                 });
                 // Started at login (`--minimized`): begin hidden in the tray.
-                if std::env::args().any(|arg| arg == "--minimized") {
-                    let _ = window.hide();
+                if !std::env::args().any(|arg| arg == "--minimized") {
+                    let _ = window.show();
                 }
             }
 
@@ -196,10 +202,14 @@ pub fn run() {
             });
 
             app.manage(state);
+            desktop::setup(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             local_api_info,
+            desktop::take_navigation,
+            desktop::check_update,
+            desktop::install_update,
             dongle_setup::dongle_list,
             dongle_setup::dongle_info,
             dongle_setup::dongle_scan,

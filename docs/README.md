@@ -13,7 +13,7 @@ This manual is also available inside the app, on the **Help** page.
    bridge and managing allowed sites.
 3. [Adding machines](adding-machines.md) — finding, adding, testing, and
    managing machines.
-4. [Setting up a dongle](dongle-setup.md) — the EmberConnect out-of-box WiFi
+4. [Setting up a dongle](dongle-setup.md) — the Ember Link out-of-box WiFi
    setup over USB.
 5. [Sending a design](sending-designs.md) — choosing a machine, file formats,
    and the upload queue.

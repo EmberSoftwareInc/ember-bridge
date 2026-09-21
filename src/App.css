@@ -12,7 +12,8 @@
   --ok: #5cbf7c;
   --warn: #d9a441;
   --err: #e06060;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   color-scheme: dark;
 }
@@ -149,8 +150,12 @@ body {
   margin-right: 6px;
 }
 
-.dot-ok { background: var(--ok); }
-.dot-err { background: var(--err); }
+.dot-ok {
+  background: var(--ok);
+}
+.dot-err {
+  background: var(--err);
+}
 
 .content {
   flex: 1;
@@ -456,10 +461,22 @@ textarea {
   white-space: nowrap;
 }
 
-.pill-ok { background: rgba(92, 191, 124, 0.15); color: var(--ok); }
-.pill-warn { background: rgba(217, 164, 65, 0.15); color: var(--warn); }
-.pill-err { background: rgba(224, 96, 96, 0.15); color: var(--err); }
-.pill-muted { background: var(--bg-hover); color: var(--text-dim); }
+.pill-ok {
+  background: rgba(92, 191, 124, 0.15);
+  color: var(--ok);
+}
+.pill-warn {
+  background: rgba(217, 164, 65, 0.15);
+  color: var(--warn);
+}
+.pill-err {
+  background: rgba(224, 96, 96, 0.15);
+  color: var(--err);
+}
+.pill-muted {
+  background: var(--bg-hover);
+  color: var(--text-dim);
+}
 
 .dim {
   color: var(--text-dim);
@@ -565,10 +582,18 @@ textarea {
   padding-top: 2px;
 }
 
-.log-info .log-level { color: var(--text-dim); }
-.log-warn .log-level { color: var(--warn); }
-.log-error .log-level { color: var(--err); }
-.log-error .log-message { color: var(--err); }
+.log-info .log-level {
+  color: var(--text-dim);
+}
+.log-warn .log-level {
+  color: var(--warn);
+}
+.log-error .log-level {
+  color: var(--err);
+}
+.log-error .log-message {
+  color: var(--err);
+}
 
 .update-safety {
   padding: 10px 12px;
@@ -739,4 +764,47 @@ textarea {
 .markdown th {
   background: var(--bg-raised);
   font-weight: 600;
+}
+
+/* Device management and explicit confirmations. */
+.device-files {
+  margin-top: 16px;
+}
+.device-files input {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+.device-files ul {
+  padding: 0;
+  list-style: none;
+  max-height: 230px;
+  overflow: auto;
+}
+.device-files li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.device-files li span {
+  overflow-wrap: anywhere;
+}
+.confirmation {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface);
+}
+.release-notes {
+  white-space: pre-wrap;
+  font-family: inherit;
+  max-height: 180px;
+  overflow: auto;
+}
+summary {
+  cursor: pointer;
+  padding: 12px 0;
 }

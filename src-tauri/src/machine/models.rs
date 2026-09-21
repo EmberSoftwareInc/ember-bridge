@@ -39,6 +39,10 @@ pub struct MachineCapabilities {
     pub max_file_bytes: Option<u64>,
     /// File extensions (lowercase, without dot) the machine can load.
     pub formats: Vec<String>,
+    #[serde(default)]
+    pub can_delete_files: bool,
+    #[serde(default)]
+    pub overwrites_by_name: bool,
 }
 
 /// Full identification of a machine: identity + capabilities.

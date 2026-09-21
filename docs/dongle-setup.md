@@ -1,6 +1,6 @@
 # Setting up a dongle
 
-An **EmberConnect** dongle adds WiFi to an embroidery machine that doesn't have
+An **Ember Link** dongle adds WiFi to an embroidery machine that doesn't have
 it. You set the dongle up once by plugging it into your computer over USB, tell
 it which WiFi network to join, then move it to your machine.
 
@@ -13,7 +13,7 @@ your router uses one name for both bands, that's fine.
 ## Step by step
 
 1. **Plug the dongle into a USB port on this computer.** Ember Bridge detects it
-   automatically and an **Ember Connect Set Up** entry appears in the sidebar.
+   automatically and an **Set up Ember Link** entry appears in the sidebar.
    Open it.
 
 2. **Check the dongle.** The page shows the dongle's **Serial**, **Firmware**,
@@ -50,8 +50,8 @@ again within **5 minutes**.
 While a dongle is connected over USB, a **Firmware update (advanced)** section
 lets you update it:
 
-1. Point the path field at a signed EmberConnect image file
-   (`ember-connect.bin`).
+1. Point the path field at a signed Ember Link image file
+   (`ember-link.bin`).
 2. Click **Update firmware** and watch the progress bar.
 
 Keep the dongle plugged in and leave Ember Bridge open until it says the image
@@ -59,7 +59,7 @@ was verified and the dongle is rebooting. If power is interrupted, the dongle
 should retain its previous bootable firmware, but the update will need to be
 started again.
 
-The dongle only accepts images signed with the official EmberConnect key, so it
+The dongle only accepts images signed with the official Ember Link key, so it
 will reject anything else. When it finishes, the dongle verifies the update,
 reboots, and reappears after a few seconds. You normally won't need this unless
 directed to update.

@@ -36,6 +36,8 @@ pub struct ServerHealth {
 }
 
 pub struct AppState {
+    pub operation: tokio::sync::Mutex<()>,
+    pub lifecycle: RwLock<()>,
     pub config: ConfigStore,
     pub registry: BackendRegistry,
     /// EmberConnect pairing tokens — one live map shared between the LAN
@@ -55,12 +57,16 @@ impl AppState {
     pub fn new(config: ConfigStore, port: u16) -> Self {
         let dongle_tokens = Arc::new(crate::emberconnect::TokenStore::load(config.dir()));
         let registry = BackendRegistry::with_default_backends(dongle_tokens.clone());
+        let jobs = JobQueue::load(config.dir())
+            .expect("transfer history must be readable before accepting more transfers");
         Self {
+            operation: tokio::sync::Mutex::new(()),
+            lifecycle: RwLock::new(()),
             config,
             registry,
             dongle_tokens,
             logs: LogBuffer::new(),
-            jobs: JobQueue::new(),
+            jobs,
             discovered: RwLock::new(DiscoveryCache::default()),
             discovery_running: AtomicBool::new(false),
             server_health: RwLock::new(ServerHealth {

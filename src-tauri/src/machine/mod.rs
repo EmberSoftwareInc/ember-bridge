@@ -44,6 +44,10 @@ pub trait EmbroideryMachine: Send + Sync {
     /// Read the machine's design-memory usage and file list.
     async fn storage(&self) -> Result<StorageStatus, MachineError>;
 
+    async fn delete_file(&self, _filename: &str) -> Result<(), MachineError> {
+        Err(MachineError::UnsupportedOperation)
+    }
+
     /// Send a design to the machine.
     ///
     /// Implementations are expected to validate the format and size against
@@ -81,12 +85,15 @@ pub struct BackendRegistry {
 }
 
 impl BackendRegistry {
+    #[cfg(test)]
+    pub(crate) fn for_tests(backends: Vec<Arc<dyn MachineBackend>>) -> Self {
+        Self { backends }
+    }
+
     /// Registry with every backend this build ships with. `dongle_tokens`
     /// is the EmberConnect pairing-token store, shared with the USB setup
     /// flow (which mints tokens this backend then presents on the LAN).
-    pub fn with_default_backends(
-        dongle_tokens: Arc<crate::emberconnect::TokenStore>,
-    ) -> Self {
+    pub fn with_default_backends(dongle_tokens: Arc<crate::emberconnect::TokenStore>) -> Self {
         Self {
             backends: vec![
                 Arc::new(crate::brother::BrotherBackend::new()),

@@ -21,6 +21,10 @@ pub struct SavedMachine {
     /// Backend that recognized the machine when it was saved, if known.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub manufacturer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub serial: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub previous_ips: Vec<IpAddr>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,8 +108,10 @@ impl ConfigStore {
     /// Mutate the config and persist it atomically.
     pub async fn update<F: FnOnce(&mut AppConfig)>(&self, mutate: F) -> std::io::Result<AppConfig> {
         let mut guard = self.config.write().await;
-        mutate(&mut guard);
-        write_config(&self.path, &guard)?;
+        let mut next = guard.clone();
+        mutate(&mut next);
+        write_config(&self.path, &next)?;
+        *guard = next;
         Ok(guard.clone())
     }
 }
@@ -115,7 +121,17 @@ impl ConfigStore {
 fn write_config(path: &std::path::Path, config: &AppConfig) -> std::io::Result<()> {
     let json = serde_json::to_string_pretty(config).expect("config serialization cannot fail");
     let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, json)?;
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    use std::io::Write;
+    let mut file = options.open(&tmp)?;
+    file.write_all(json.as_bytes())?;
+    file.sync_all()?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

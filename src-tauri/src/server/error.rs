@@ -71,6 +71,11 @@ impl ApiError {
 impl From<MachineError> for ApiError {
     fn from(e: MachineError) -> Self {
         let status = match &e {
+            MachineError::Busy
+            | MachineError::DeliveryUnknown
+            | MachineError::IdentityChanged
+            | MachineError::FileExists => StatusCode::CONFLICT,
+            MachineError::UnsupportedOperation => StatusCode::UNPROCESSABLE_ENTITY,
             // The bridge is fine; the machine could not be reached or
             // answered nonsense — a gateway-style failure.
             MachineError::Unreachable(_)

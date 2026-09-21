@@ -26,7 +26,7 @@ A couple of details:
 You can also connect by pasting a token into Ember:
 
 1. In Ember Bridge, open **Settings**.
-2. Under **Pair with Ember**, click **Show**, then **Copy** (it briefly reads
+2. Expand **Advanced connection settings**. Under **Manual pairing token**, click **Show**, then **Copy** (it briefly reads
    **Copied!**).
 3. Paste it into Ember's machine-connection settings.
 
@@ -39,8 +39,7 @@ Ember's official sites work out of the box — you don't need to configure
 anything for **https://emberdesign.net** or **https://v2.emberdesign.net**.
 Localhost and Ember Bridge's own window are always allowed too.
 
-If you use Ember from a different address, add it under **Settings → Allowed web
-origins**:
+If you use Ember from a different address, add it under **Settings → Advanced connection settings → Allowed web origins**:
 
 - Enter one origin per line, for example `https://ember.example`.
 - Click **Save origins** (it briefly reads **Saved ✓**).
@@ -54,3 +53,12 @@ the wider internet can reach it — and every request must carry your pairing
 token. Approving a connection (or pasting the token) is exactly what grants a
 browser page permission to use your machines, and you can review activity any
 time on the **Logs** page.
+
+## Open Bridge from Ember
+
+An Ember button can open `ember-bridge://connect`. Your browser may ask whether
+to open Ember Bridge. The app must already be installed. Opening it does not
+authorize access: approve the separate connection request in Bridge.
+
+Ember Link cloud account setup is separate from pairing this computer with
+Bridge. Cloud delivery does not require Bridge to be installed or running.

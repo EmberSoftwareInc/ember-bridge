@@ -8,7 +8,7 @@ Browser (Ember) ──HTTP──▶ 127.0.0.1:17831 (Ember Bridge) ──HTTPS�
 ```
 
 Built with **Tauri v2** (Rust backend, React + TypeScript + Vite frontend).
-Currently supports **Brother** machines (Innov-is / WLAN line) via the
+Supports **Ember Link** dongles (local Wi-Fi transfers) and **Brother** machines (Innov-is / WLAN line) via the
 reverse-engineered "pedxml" protocol spoken by Brother's *Design Database
 Transfer* application.
 
@@ -88,18 +88,18 @@ src-tauri/src/
     models.rs       storage / upload), MachineBackend (probe / connect /
     error.rs        discover), plus neutral models and errors, and the
     net.rs          local-network IP policy.
-  emberconnect/     EmberConnect dongle backend (our own WiFi "memory
-    client.rs       stick" hardware; see the EmberConnect repo). Plain
+  emberconnect/     Ember Link dongle backend (our own WiFi "memory
+    client.rs       stick" hardware; see the Ember Link repo). Plain
     models.rs       HTTP/JSON on port 80; discovery via mDNS browse
     discovery.rs    (_ember-connect._tcp) instead of a subnet sweep.
     tokens.rs       Pairing tokens by dongle serial (firmware 0.4.0+
                     requires them); pairing happens transparently on 401
                     while the dongle's pairing window is open, else the
                     user is told to replug it (pairing_required).
-  dongle_setup/     Desktop (USB) setup for EmberConnect dongles: the
+  dongle_setup/     Desktop (USB) setup for Ember Link dongles: the
     mod.rs          "plug it into your computer first" out-of-box flow.
     link.rs         CDC-ACM serial transport (line-delimited JSON; protocol
-                    defined in the EmberConnect repo, usb_setup.h). Scans
+                    defined in the Ember Link repo, usb_setup.h). Scans
                     WiFi with the dongle's radio, live-trials credentials
                     (commit-on-success → wrong password is an inline retry),
                     names the machine, pre-pairs this Bridge (writes into
@@ -170,8 +170,7 @@ Reference: packet captures of *Design Database Transfer* (see the
   **204**; the machine renames the file itself (e.g. `32770.PES`) — we diff
   the file list before/after to report the assigned name.
 * The embedded server (`debut/1.20`) is slow and single-threaded: generous
-  timeouts, retries on reads, at most one retry on upload (to avoid
-  duplicate designs), no connection pooling, explicit `Content-Length`
+  timeouts, retries on reads, no automatic retry after an uncertain upload, no connection pooling, explicit `Content-Length`
   (no chunked encoding).
 * Discovery: the machines do not announce via mDNS; we sweep each private
   /24 with a short TCP dial to :443 followed by a protocol probe.
@@ -200,9 +199,15 @@ Reference: packet captures of *Design Database Transfer* (see the
 
 Implemented: discovery, identification, storage query, upload queue with
 progress, machine nicknames, logs, settings, one-click browser pairing
-(Approve/Deny prompt in the app), EmberConnect dongle backend (mDNS
+(Approve/Deny prompt in the app), Ember Link dongle backend (mDNS
 discovery + HTTP upload — covers machines with no network hardware via our
 own USB dongle).
 
-Future: system-tray mode, autostart, per-machine upload history, additional
-manufacturer backends.
+Also implemented: menu-bar/tray mode and autostart, `ember-bridge://` navigation,
+stable saved device identities, bounded transfer queues with durable history,
+explicit cancellation and uncertain-delivery recovery, file search/deletion on
+capable devices, and signature-verified desktop updates.
+
+See [desktop integration and releases](docs/desktop-integration.md) for the web-app
+handoff, update-signing setup, migration notes, and remaining hardware checks.
+Future: additional manufacturer backends and concurrent uploads to different devices.

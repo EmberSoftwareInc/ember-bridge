@@ -53,10 +53,9 @@ pub fn app_version() -> &'static str {
 /// Parse and vet a target machine address: must parse, and must be on the
 /// local network — the bridge refuses to be used as a proxy to the internet.
 fn parse_target_ip(raw: &str) -> Result<IpAddr, ApiError> {
-    let ip: IpAddr = raw
-        .trim()
-        .parse()
-        .map_err(|_| ApiError::bad_request("invalid_ip", format!("{raw:?} is not an IP address")))?;
+    let ip: IpAddr = raw.trim().parse().map_err(|_| {
+        ApiError::bad_request("invalid_ip", format!("{raw:?} is not an IP address"))
+    })?;
     if !is_local_network_ip(ip) {
         return Err(ApiError::bad_request(
             "ip_not_local",
@@ -94,6 +93,10 @@ pub async fn status(
 ) -> Result<impl IntoResponse, ApiError> {
     if params.contains_key("ip") {
         let ip = required_ip(&params)?;
+        let _operation = state
+            .operation
+            .try_lock()
+            .map_err(|_| ApiError::from(crate::machine::MachineError::Busy))?;
         let (machine, info) = resolve_machine(&state, ip).await?;
         let storage = machine.storage().await?;
         return Ok(Json(json!({ "info": info, "storage": storage })));
@@ -117,6 +120,10 @@ pub async fn info(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let ip = required_ip(&params)?;
+    let _operation = state
+        .operation
+        .try_lock()
+        .map_err(|_| ApiError::from(crate::machine::MachineError::Busy))?;
     let (_machine, info) = resolve_machine(&state, ip).await?;
     Ok(Json(info))
 }
@@ -132,13 +139,7 @@ async fn resolve_machine(
     ),
     ApiError,
 > {
-    match state.registry.identify(ip).await? {
-        Some(found) => Ok(found),
-        None => Err(ApiError::bad_request(
-            "not_a_machine",
-            format!("the device at {ip} does not speak any supported embroidery protocol"),
-        )),
-    }
+    Ok(super::identity::resolve(state, ip, None).await?)
 }
 
 // ---------------------------------------------------------------------------
@@ -174,14 +175,32 @@ pub async fn save_machine(
         .nickname
         .map(|n| n.trim().to_string())
         .filter(|n| !n.is_empty());
+    let known = state
+        .discovered
+        .read()
+        .await
+        .machines
+        .iter()
+        .find(|d| d.info.identity.ip == ip)
+        .map(|d| d.info.identity.clone());
     let config = state
         .config
         .update(|c| {
+            let previous = c.machines.iter().find(|m| m.ip == ip).cloned();
             c.machines.retain(|m| m.ip != ip);
             c.machines.push(SavedMachine {
                 ip,
                 nickname: nickname.clone(),
-                manufacturer: body.manufacturer.clone(),
+                manufacturer: previous
+                    .as_ref()
+                    .and_then(|m| m.manufacturer.clone())
+                    .or_else(|| known.as_ref().map(|k| k.manufacturer.clone()))
+                    .or(body.manufacturer.clone()),
+                serial: previous
+                    .as_ref()
+                    .and_then(|m| m.serial.clone())
+                    .or_else(|| known.as_ref().and_then(|k| k.serial.clone())),
+                previous_ips: previous.map(|m| m.previous_ips).unwrap_or_default(),
             });
         })
         .await
@@ -217,6 +236,10 @@ pub async fn delete_machine(
 /// Sweep the local network. Blocks until the sweep finishes (a few seconds);
 /// concurrent sweeps are collapsed into one.
 pub async fn discover(State(state): State<Arc<AppState>>) -> Result<impl IntoResponse, ApiError> {
+    let _operation = state
+        .operation
+        .try_lock()
+        .map_err(|_| ApiError::from(crate::machine::MachineError::Busy))?;
     if state
         .discovery_running
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
@@ -249,6 +272,7 @@ pub async fn discover(State(state): State<Arc<AppState>>) -> Result<impl IntoRes
         machines.len()
     ));
 
+    super::identity::refresh_addresses(&state, &machines).await?;
     let mut cache = state.discovered.write().await;
     cache.machines = machines;
     cache.completed_at_ms = Some(now_ms());
@@ -274,10 +298,7 @@ pub const MAX_UPLOAD_BYTES: usize = 32 * 1024 * 1024;
 /// These are the only handlers where the origin allowlist is enforced
 /// server-side: elsewhere CORS merely controls response visibility, but a
 /// pairing request must not even be *created* for an unknown origin.
-async fn vetted_pairing_origin(
-    state: &AppState,
-    headers: &HeaderMap,
-) -> Result<String, ApiError> {
+async fn vetted_pairing_origin(state: &AppState, headers: &HeaderMap) -> Result<String, ApiError> {
     let origin = headers
         .get(header::ORIGIN)
         .and_then(|v| v.to_str().ok())
@@ -318,9 +339,9 @@ pub async fn create_pairing(
 
     match state.pairing.begin(origin.clone(), app_name).await {
         Ok(request) => {
-            state
-                .logs
-                .info(format!("{origin} is asking to pair — approve or deny in the app"));
+            state.logs.info(format!(
+                "{origin} is asking to pair — approve or deny in the app"
+            ));
             // Bring the desktop window to the front so the prompt is seen.
             if let Some(notify) = &*state.pairing_notify.lock().unwrap() {
                 notify();
@@ -354,7 +375,9 @@ pub async fn poll_pairing(
             // The one moment the token crosses to the browser. The poll()
             // above consumed the request, so this cannot repeat.
             let token = state.config.get().await.api_token;
-            state.logs.info(format!("Pairing token released to {origin}"));
+            state
+                .logs
+                .info(format!("Pairing token released to {origin}"));
             Ok(Json(json!({ "state": "approved", "token": token })))
         }
     }
@@ -378,7 +401,9 @@ pub async fn pairing_respond(
     match state.pairing.respond(&body.id, body.approve).await {
         Some(origin) => {
             let verdict = if body.approve { "approved" } else { "denied" };
-            state.logs.info(format!("Pairing request from {origin} {verdict}"));
+            state
+                .logs
+                .info(format!("Pairing request from {origin} {verdict}"));
             Ok(Json(json!({ "ok": true })))
         }
         None => Err(ApiError::not_found(
@@ -411,7 +436,41 @@ pub async fn send(
         ));
     }
 
-    let job = state.jobs.enqueue(ip, filename, body);
+    validate_filename(&filename)?;
+    let _lifecycle = state
+        .lifecycle
+        .try_read()
+        .map_err(|_| ApiError::conflict("updating", "Bridge is installing an update."))?;
+    let config = state.config.get().await;
+    let saved = config.machines.iter().find(|m| m.ip == ip).or_else(|| {
+        config
+            .machines
+            .iter()
+            .find(|m| m.previous_ips.contains(&ip))
+    });
+    let discovered = state.discovered.read().await;
+    let expected = match (params.get("manufacturer"), params.get("serial")) {
+        (Some(m), Some(s)) if !s.is_empty() => Some((m.clone(), s.clone())),
+        _ => saved
+            .and_then(|m| m.manufacturer.clone().zip(m.serial.clone()))
+            .or_else(|| {
+                discovered
+                    .machines
+                    .iter()
+                    .find(|d| d.info.identity.ip == ip)
+                    .and_then(|d| {
+                        d.info
+                            .identity
+                            .serial
+                            .clone()
+                            .map(|s| (d.info.identity.manufacturer.clone(), s))
+                    })
+            }),
+    };
+    let overwrite = params.get("overwrite").is_some_and(|v| v == "true");
+    let job = state
+        .jobs
+        .enqueue(ip, filename, body, expected, overwrite)?;
     Ok((StatusCode::ACCEPTED, Json(json!({ "job": job }))))
 }
 
@@ -480,7 +539,9 @@ pub async fn update_settings(
         if !valid {
             return Err(ApiError::bad_request(
                 "invalid_origin",
-                format!("{origin:?} is not a valid web origin (expected e.g. https://ember.example)"),
+                format!(
+                    "{origin:?} is not a valid web origin (expected e.g. https://ember.example)"
+                ),
             ));
         }
     }
@@ -498,4 +559,79 @@ fn now_ms() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+fn validate_filename(filename: &str) -> Result<(), ApiError> {
+    if filename.is_empty()
+        || filename.len() > 240
+        || filename.starts_with('.')
+        || filename
+            .chars()
+            .any(|c| c.is_control() || matches!(c, '/' | '\\' | ':'))
+    {
+        return Err(ApiError::bad_request(
+            "invalid_filename",
+            "Use a file name without directories or control characters.",
+        ));
+    }
+    Ok(())
+}
+pub async fn delete_file(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, ApiError> {
+    let ip = required_ip(&params)?;
+    let filename = params
+        .get("filename")
+        .ok_or_else(|| ApiError::bad_request("missing_filename", "A filename is required"))?;
+    validate_filename(filename)?;
+    if params.get("confirmed").map(String::as_str) != Some("true") {
+        return Err(ApiError::bad_request(
+            "confirmation_required",
+            "Confirm deletion first",
+        ));
+    }
+    let expected = params
+        .get("manufacturer")
+        .zip(params.get("serial"))
+        .map(|(m, s)| (m.as_str(), s.as_str()));
+    if expected.is_none() {
+        return Err(ApiError::bad_request(
+            "identity_required",
+            "Read device status before deleting a file.",
+        ));
+    }
+    let _lifecycle = state
+        .lifecycle
+        .try_read()
+        .map_err(|_| ApiError::conflict("updating", "Bridge is updating"))?;
+    let _operation = state
+        .operation
+        .try_lock()
+        .map_err(|_| ApiError::from(crate::machine::MachineError::Busy))?;
+    let (machine, info) = super::identity::resolve(&state, ip, expected).await?;
+    if !info.capabilities.can_delete_files {
+        return Err(crate::machine::MachineError::UnsupportedOperation.into());
+    }
+    machine.delete_file(filename).await?;
+    Ok(Json(json!({"ok": true})))
+}
+pub async fn cancel_job(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, ApiError> {
+    Ok(Json(json!({"job": state.jobs.cancel(&id)?})))
+}
+#[derive(Deserialize)]
+pub struct ResolveJobBody {
+    pub delivered: bool,
+}
+pub async fn resolve_job(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(body): Json<ResolveJobBody>,
+) -> Result<impl IntoResponse, ApiError> {
+    Ok(Json(
+        json!({"job": state.jobs.resolve(&id, body.delivered)?}),
+    ))
 }

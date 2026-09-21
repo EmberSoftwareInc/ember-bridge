@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Ember Bridge",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "identifier": "app.ember.bridge",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -16,7 +16,8 @@
         "width": 1000,
         "height": 700,
         "minWidth": 780,
-        "minHeight": 540
+        "minHeight": 540,
+        "visible": false
       }
     ],
     "security": {
@@ -37,6 +38,22 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "ember-bridge"
+        ]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVGMzkyMUE5RUE3RkEwQzgKUldUSW9IL3FxU0U1WHdDN2FIVG9ycFNHRm5NYXFDTzVqMHpBMUNucm5sWnpvZXJqTXBDQW9nWU8K",
+      "endpoints": [
+        "https://github.com/EmberSoftwareInc/ember-bridge/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

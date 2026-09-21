@@ -3,6 +3,8 @@
  * allowlist, and bridge health.
  */
 
+import { UpdatePanel } from "../components/UpdatePanel";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
 import type { Settings } from "../api/types";
 import { useBridge } from "../hooks/useBridge";
@@ -14,7 +16,9 @@ export function SettingsPage() {
   const [origins, setOrigins] = useState("");
   const [tokenVisible, setTokenVisible] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">(
+    "idle",
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,7 +72,9 @@ export function SettingsPage() {
             {health.serverRunning ? (
               <Pill tone="ok">running</Pill>
             ) : (
-              <Pill tone="err">stopped{health.serverError ? ` — ${health.serverError}` : ""}</Pill>
+              <Pill tone="err">
+                stopped{health.serverError ? ` — ${health.serverError}` : ""}
+              </Pill>
             )}
           </dd>
           <dt>Version</dt>
@@ -76,47 +82,69 @@ export function SettingsPage() {
         </dl>
       </Section>
 
-      <Section title="Pair with Ember">
-        <p className="dim">
-          Ember authenticates every request with this token. Copy it into
-          Ember's machine-connection settings once.
+      <Section title="Connect Ember to this computer">
+        <p>
+          In the Ember web app, choose Ember Bridge to connect your machine.
+          When this app asks, check the website address and click Approve.
         </p>
-        <div className="token-row">
-          <code className="token">
-            {settings
-              ? tokenVisible
-                ? settings.apiToken
-                : "•".repeat(32)
-              : "loading…"}
-          </code>
-          <button onClick={() => setTokenVisible((v) => !v)}>
-            {tokenVisible ? "Hide" : "Show"}
-          </button>
-          <button onClick={copyToken} disabled={!settings}>
-            {copied ? "Copied!" : "Copy"}
-          </button>
-        </div>
+        <p className="dim">
+          Opening Bridge from a website only opens the app. You still approve
+          each new pairing request here.
+        </p>
+        <p className="dim">
+          Ember Link cloud setup connects a dongle to your account and works
+          without Bridge. The USB setup here connects it to Wi-Fi and pairs it
+          with this computer for local transfers.
+        </p>
+        <button onClick={() => void openUrl("https://connect.emberdesign.net")}>
+          Open Ember Link cloud setup
+        </button>
       </Section>
+      <UpdatePanel />
+      <details>
+        <summary>Advanced connection settings</summary>
+        <Section title="Manual pairing token">
+          <p className="dim">
+            For integrations that cannot use the approval flow, this token
+            grants access to your machines. Keep it private.
+          </p>
+          <div className="token-row">
+            <code className="token">
+              {settings
+                ? tokenVisible
+                  ? settings.apiToken
+                  : "•".repeat(32)
+                : "loading…"}
+            </code>
+            <button onClick={() => setTokenVisible((v) => !v)}>
+              {tokenVisible ? "Hide" : "Show"}
+            </button>
+            <button onClick={copyToken} disabled={!settings}>
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        </Section>
 
-      <Section title="Allowed web origins">
-        <p className="dim">
-          Browser pages may only call the bridge from these origins (one per
-          line, e.g. <code>https://ember.example</code>). Localhost and this
-          app are always allowed.
-        </p>
-        <textarea
-          rows={4}
-          value={origins}
-          onChange={(e) => setOrigins(e.target.value)}
-          placeholder="https://ember.example"
-          spellCheck={false}
-        />
-        <div>
-          <button className="primary" onClick={saveOrigins}>
-            {saveState === "saved" ? "Saved ✓" : "Save origins"}
-          </button>
-        </div>
-      </Section>
+        <Section title="Allowed web origins">
+          <p className="dim">
+            Browser pages may only call the bridge from these origins (one per
+            line, e.g. <code>https://ember.example</code>). Localhost and this
+            app are always allowed.
+          </p>
+          <textarea
+            rows={4}
+            value={origins}
+            onChange={(e) => setOrigins(e.target.value)}
+            placeholder="https://ember.example"
+            spellCheck={false}
+          />
+          <div>
+            <button className="primary" onClick={saveOrigins}>
+              {saveState === "saved" ? "Saved ✓" : "Save origins"}
+            </button>
+          </div>
+        </Section>
+      </details>
     </div>
   );
 }

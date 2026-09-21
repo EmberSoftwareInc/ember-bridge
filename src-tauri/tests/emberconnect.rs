@@ -26,6 +26,9 @@ struct MockDongle {
     uploads: RecordedUploads,
     /// Simulate a nearly-full card.
     free_bytes: u64,
+    health_name: &'static str,
+    ambiguous_reply: bool,
+    busy: bool,
     /// User-chosen machine name (firmware 0.5.0+); "" = never named.
     device_name: String,
     /// Firmware 0.4.0+ behaviour: everything but health/pair wants a token.
@@ -63,13 +66,18 @@ fn unauthorized() -> (StatusCode, Json<serde_json::Value>) {
 
 async fn start_mock(dongle: MockDongle) -> (u16, MockDongle) {
     let free = dongle.free_bytes;
+    let health_name = if dongle.health_name.is_empty() {
+        "EmberConnect"
+    } else {
+        dongle.health_name
+    };
     let device_name = dongle.device_name.clone();
     let app = Router::new()
         .route(
             "/api/health",
             get(move || async move {
                 Json(json!({
-                    "ok": true, "name": "EmberConnect", "deviceName": device_name,
+                    "ok": true, "name": health_name, "deviceName": device_name,
                     "version": "0.4.0", "serial": "A1B2C3D4E5F6"
                 }))
             }),
@@ -158,8 +166,26 @@ async fn start_mock(dongle: MockDongle) -> (u16, MockDongle) {
                             }})),
                         );
                     }
+                    if state.busy {
+                        return (
+                            StatusCode::CONFLICT,
+                            Json(
+                                json!({"error":{"code":"busy","message":"cloud transfer running"}}),
+                            ),
+                        );
+                    }
                     let size = body.len();
-                    state.uploads.lock().unwrap().push((name.clone(), body.to_vec()));
+                    state
+                        .uploads
+                        .lock()
+                        .unwrap()
+                        .push((name.clone(), body.to_vec()));
+                    if state.ambiguous_reply {
+                        return (
+                            StatusCode::OK,
+                            Json(json!({"unexpected":"reply after commit"})),
+                        );
+                    }
                     (
                         StatusCode::CREATED,
                         Json(json!({"ok": true, "file": {"name": name, "size": size}})),
@@ -208,7 +234,7 @@ async fn probe_identifies_a_dongle_and_builds_identity() {
     let info = client(port, empty_store()).info().await.unwrap();
     assert_eq!(info.identity.manufacturer, "emberconnect");
     // Never named → fall back to the setup-hotspot style name.
-    assert_eq!(info.identity.name.as_deref(), Some("EmberConnect-E5F6"));
+    assert_eq!(info.identity.name.as_deref(), Some("Ember Link E5F6"));
     assert_eq!(info.identity.serial.as_deref(), Some("A1B2C3D4E5F6"));
     assert_eq!(info.identity.firmware.as_deref(), Some("0.4.0"));
     assert!(info.capabilities.formats.iter().any(|f| f == "pes"));
@@ -300,7 +326,10 @@ async fn full_card_maps_to_insufficient_storage() {
         .await
         .unwrap_err();
 
-    assert!(matches!(err, MachineError::InsufficientStorage { size: 1000, .. }));
+    assert!(matches!(
+        err,
+        MachineError::InsufficientStorage { size: 1000, .. }
+    ));
     // Rejected before any bytes were streamed.
     assert!(dongle.uploads.lock().unwrap().is_empty());
 }
@@ -383,7 +412,10 @@ async fn closed_pairing_window_is_an_actionable_error() {
     let err = client(port, empty_store()).storage().await.unwrap_err();
     match err {
         MachineError::PairingRequired { hint } => {
-            assert!(hint.contains("replug"), "hint should tell the user what to do: {hint}");
+            assert!(
+                hint.contains("replug"),
+                "hint should tell the user what to do: {hint}"
+            );
         }
         other => panic!("expected PairingRequired, got {other:?}"),
     }
@@ -407,4 +439,57 @@ async fn revoked_token_triggers_repairing() {
     assert_eq!(*dongle.pair_calls.lock().unwrap(), 1);
     // The stale token was replaced with the fresh one.
     assert_eq!(store.get("A1B2C3D4E5F6").as_deref(), Some("mock-token-1"));
+}
+
+#[tokio::test]
+async fn ember_link_health_and_capabilities_are_supported() {
+    let (port, _) = start_mock(MockDongle {
+        health_name: "Ember Link",
+        ..Default::default()
+    })
+    .await;
+    let info = client(port, empty_store()).info().await.unwrap();
+    assert_eq!(info.identity.model, "Ember Link");
+    assert!(info.capabilities.can_delete_files);
+    assert!(info.capabilities.overwrites_by_name);
+}
+#[tokio::test]
+async fn ambiguous_upload_response_is_never_replayed() {
+    let (port, dongle) = start_mock(MockDongle {
+        free_bytes: 10000,
+        ambiguous_reply: true,
+        ..Default::default()
+    })
+    .await;
+    let result = client(port, empty_store())
+        .upload(
+            UploadRequest {
+                filename: "x.pes".into(),
+                data: bytes::Bytes::from_static(b"design"),
+            },
+            Arc::new(|_| {}),
+        )
+        .await;
+    assert!(matches!(result, Err(MachineError::DeliveryUnknown)));
+    assert_eq!(dongle.uploads.lock().unwrap().len(), 1);
+}
+#[tokio::test]
+async fn cloud_busy_is_distinct_from_an_unknown_outcome() {
+    let (port, dongle) = start_mock(MockDongle {
+        free_bytes: 10000,
+        busy: true,
+        ..Default::default()
+    })
+    .await;
+    let result = client(port, empty_store())
+        .upload(
+            UploadRequest {
+                filename: "x.pes".into(),
+                data: bytes::Bytes::from_static(b"design"),
+            },
+            Arc::new(|_| {}),
+        )
+        .await;
+    assert!(matches!(result, Err(MachineError::Busy)));
+    assert!(dongle.uploads.lock().unwrap().is_empty());
 }

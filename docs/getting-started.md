@@ -61,12 +61,12 @@ The left sidebar holds the main pages:
 - **Machines** — find, add, test, and manage your embroidery machines.
 - **Send** — pick a machine and send a design to it.
 - **Logs** — a running record of what the bridge is doing.
-- **Settings** — your Ember pairing token and other options.
+- **Settings** — browser connection help, app updates, and advanced options.
 - **Help** — this manual.
 
-A **Ember Connect Set Up** entry also appears automatically whenever you plug an
-EmberConnect dongle into this computer over USB.
+The **Set up Ember Link** page guides local USB setup. Connect a dongle over USB
+when instructed. For cloud account setup without Bridge, use
+[connect.emberdesign.net](https://connect.emberdesign.net).
 
-At the bottom of the sidebar, a status line shows **API on :17831** when the
-bridge is running (or **API offline** if something's wrong), plus the machine
-you currently have selected as the send **Target**.
+The sidebar shows **Ready for Ember** when the local service is running, plus
+the currently selected target. Connection details are in Settings.
