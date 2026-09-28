@@ -1,7 +1,5 @@
 name: Qualify release installers
 on:
-  push:
-    branches: [codex/stable-publication]
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p qualification/assets qualification/previous
-          gh release download v0.5.0 --repo "$GITHUB_REPOSITORY" --dir qualification/assets
+          gh release download v0.5.1 --repo "$GITHUB_REPOSITORY" --dir qualification/assets
           if [ "$RUNNER_OS" = Windows ]; then
             gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --dir qualification/previous
           else
