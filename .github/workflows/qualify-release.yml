@@ -1,0 +1,59 @@
+name: Qualify release installers
+on:
+  push:
+    branches: [codex/stable-publication]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  updater:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Linux libraries and virtual display
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf build-essential libssl-dev libgtk-3-dev libxdo-dev libudev-dev xvfb
+      - run: npm ci
+      - run: npm run build
+      - run: cargo build --locked --example release_update_probe --manifest-path src-tauri/Cargo.toml
+      - name: Download unchanged signed releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p qualification/assets qualification/previous
+          gh release download v0.5.0 --repo "$GITHUB_REPOSITORY" --dir qualification/assets
+          if [ "$RUNNER_OS" = Windows ]; then
+            gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --dir qualification/previous
+          else
+            gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*.AppImage' --dir qualification/previous
+          fi
+      - name: Linux signed upgrade and launch
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python scripts/qualify-release.py --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe --output qualification/evidence
+      - name: Windows signed upgrade and launch
+        if: runner.os == 'Windows'
+        run: python scripts/qualify-release.py --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe.exe --output qualification/evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qualification-${{ runner.os }}
+          path: qualification/evidence
+          if-no-files-found: ignore

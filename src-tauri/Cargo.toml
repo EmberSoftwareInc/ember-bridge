@@ -54,5 +54,6 @@ bytes = "1"
 sha2 = "0.10"
 
 [dev-dependencies]
+tauri = { version = "2", features = ["test"] }
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
