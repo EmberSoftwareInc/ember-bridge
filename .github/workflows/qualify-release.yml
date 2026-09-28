@@ -7,6 +7,10 @@ permissions:
   contents: read
 jobs:
   updater:
+    # GitHub hides draft releases from tokens without repository write access.
+    # The job only downloads assets; it never edits or publishes a release.
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
