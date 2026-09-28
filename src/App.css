@@ -1,0 +1,850 @@
+/* Ember Bridge — application styles. Dark, calm, utilitarian. */
+
+:root {
+  --bg: #16161c;
+  --bg-raised: #1e1e26;
+  --bg-hover: #26262f;
+  --border: #32323e;
+  --text: #e8e6e3;
+  --text-dim: #9a97a3;
+  --accent: #f0803c; /* ember */
+  --accent-soft: rgba(240, 128, 60, 0.15);
+  --ok: #5cbf7c;
+  --warn: #d9a441;
+  --err: #e06060;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+#root,
+.shell {
+  height: 100vh;
+}
+
+/* ---- layout ------------------------------------------------------------ */
+
+.shell {
+  display: flex;
+}
+
+.sidebar {
+  width: 190px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 10px;
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  padding: 6px 10px 16px;
+  letter-spacing: 0.02em;
+}
+
+.brand-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.nav-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge {
+  margin-left: auto;
+  background: var(--accent);
+  color: #1a1208;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+}
+
+/* "Set up dongle": appears only while a dongle is plugged into this
+   computer, pinned just above the footer, pulsing gently until visited. */
+.setup-cta {
+  margin-top: auto;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+
+/* The footer also claims margin-top:auto (its anchor when no dongle is
+   plugged in); with both set, flexbox splits the slack and the button
+   floats mid-sidebar. When the button is present, it owns the slack. */
+.setup-cta ~ .sidebar-footer {
+  margin-top: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .setup-cta:not(.active) {
+    animation: setup-pulse 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes setup-pulse {
+  0%,
+  100% {
+    background: none;
+    box-shadow: none;
+  }
+  50% {
+    background: var(--accent-soft);
+    box-shadow: 0 0 14px rgba(240, 128, 60, 0.35);
+  }
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.dot-ok {
+  background: var(--ok);
+}
+.dot-err {
+  background: var(--err);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.page {
+  padding: 20px 24px 40px;
+  max-width: 760px;
+}
+
+.page-logs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+}
+
+/* ---- pairing banner ------------------------------------------------------ */
+
+.pairing-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 16px 24px 0;
+  max-width: 760px;
+  padding: 12px 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+}
+
+.pairing-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pairing-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ---- sections ----------------------------------------------------------- */
+
+.section {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.section-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.section-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ---- controls ----------------------------------------------------------- */
+
+button {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--text-dim);
+}
+
+button:disabled {
+  opacity: 0.45;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1208;
+  font-weight: 600;
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--err);
+  color: var(--err);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  user-select: text;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Target picker on the Send page. */
+.machine-select {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 10px;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inline-form input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.inline-form input:first-child {
+  flex-basis: 220px;
+}
+
+/* ---- machines ----------------------------------------------------------- */
+
+.machine-list,
+.job-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.machine-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.machine-row:hover {
+  background: var(--bg-hover);
+}
+
+.machine-row.selected {
+  background: var(--accent-soft);
+}
+
+.machine-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  text-align: left;
+}
+
+.machine-name {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.machine-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ---- send / jobs --------------------------------------------------------- */
+
+.target-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 10px;
+}
+
+.target-header strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.storage-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.file-list {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.send-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.job-row {
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.job-row:first-child {
+  border-top: none;
+}
+
+.job-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.job-name {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-time {
+  margin-left: auto;
+}
+
+.job-error {
+  color: var(--err);
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+/* ---- pills, notes, misc -------------------------------------------------- */
+
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.pill-ok {
+  background: rgba(92, 191, 124, 0.15);
+  color: var(--ok);
+}
+.pill-warn {
+  background: rgba(217, 164, 65, 0.15);
+  color: var(--warn);
+}
+.pill-err {
+  background: rgba(224, 96, 96, 0.15);
+  color: var(--err);
+}
+.pill-muted {
+  background: var(--bg-hover);
+  color: var(--text-dim);
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+.empty-state {
+  color: var(--text-dim);
+  padding: 14px 0;
+}
+
+.error-note {
+  background: rgba(224, 96, 96, 0.12);
+  border: 1px solid rgba(224, 96, 96, 0.4);
+  color: var(--err);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.kv dt {
+  color: var(--text-dim);
+}
+
+.kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.token-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.token {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+  user-select: text;
+}
+
+/* ---- logs ---------------------------------------------------------------- */
+
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-toolbar .dim {
+  margin-top: 3px;
+}
+
+.log-view {
+  flex: 1;
+  overflow-y: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  padding: 4px;
+  user-select: text;
+}
+
+.log-entry {
+  display: flex;
+  gap: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.log-entry:hover {
+  background: var(--bg-raised);
+}
+
+.log-time {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.log-level {
+  width: 42px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding-top: 2px;
+}
+
+.log-info .log-level {
+  color: var(--text-dim);
+}
+.log-warn .log-level {
+  color: var(--warn);
+}
+.log-error .log-level {
+  color: var(--err);
+}
+.log-error .log-message {
+  color: var(--err);
+}
+
+.update-safety {
+  padding: 10px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.update-safety-active {
+  border-color: var(--err);
+  background: color-mix(in srgb, var(--err) 12%, transparent);
+}
+
+/* ---- boot error ----------------------------------------------------------- */
+
+.boot-error {
+  padding: 40px;
+}
+
+/* ---- help / manual -------------------------------------------------------- */
+
+.help-page {
+  display: flex;
+  gap: 24px;
+  padding: 20px 24px 40px;
+  max-width: 960px;
+}
+
+.help-toc {
+  flex: 0 0 172px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+}
+
+.help-toc-item {
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  padding: 7px 10px;
+  border-radius: 6px;
+}
+
+.help-toc-item:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.help-toc-item.active {
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.help-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- rendered markdown ---------------------------------------------------- */
+
+.markdown {
+  user-select: text;
+  line-height: 1.6;
+  max-width: 680px;
+}
+
+.markdown h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.markdown h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 28px 0 8px;
+}
+
+.markdown h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 20px 0 6px;
+}
+
+.markdown p {
+  margin: 0 0 12px;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.markdown li {
+  margin: 4px 0;
+}
+
+.markdown a {
+  color: var(--accent);
+}
+
+.markdown code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.markdown pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0 0 12px;
+}
+
+.markdown pre code {
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.markdown blockquote {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  color: var(--text);
+}
+
+.markdown blockquote p {
+  margin: 0;
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.markdown th {
+  background: var(--bg-raised);
+  font-weight: 600;
+}
+
+/* Explicit confirmations for transfers. */
+.confirmation {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface);
+}
+.release-notes {
+  white-space: pre-wrap;
+  font-family: inherit;
+  max-height: 180px;
+  overflow: auto;
+}
+summary {
+  cursor: pointer;
+  padding: 12px 0;
+}
+
+/* Ember Link: a settings overview and a separate Wi-Fi configuration page. */
+.link-page { max-width: 900px; margin-inline: auto; }
+.link-page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 2px 0 24px; }
+.link-page-header h1 { font-size: 25px; letter-spacing: -0.025em; margin: 0 0 6px; }
+.link-page-header p { color: var(--text-dim); margin: 0; }
+.link-page .section { padding: 20px; }
+.link-page .section-header h2 { color: var(--text); font-size: 15px; letter-spacing: 0; text-transform: none; }
+.link-wifi-summary, .link-wifi-status { display: flex; align-items: center; gap: 14px; }
+.link-wifi-summary { justify-content: space-between; }
+.link-wifi-status { min-width: 0; }
+.link-wifi-status p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.link-wifi-summary > button { flex-shrink: 0; padding: 9px 13px; }
+.link-wifi-status .dot { flex-shrink: 0; }
+.dot-warn { background: var(--warn); }
+.link-preferences { min-width: 0; border: 0; margin: 0; padding: 0; }
+.link-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--border); }
+.link-setting-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.link-setting-copy strong { font-size: 14px; font-weight: 500; }
+.link-setting-copy > span { font-size: 12px; line-height: 1.5; color: var(--text-dim); }
+.link-switch { appearance: none; position: relative; flex: 0 0 42px; width: 42px; height: 24px; border-radius: 999px; padding: 0; margin: 0; background: var(--border); border: 1px solid transparent; cursor: pointer; transition: background .15s; }
+.link-switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--text); transition: transform .15s; }
+.link-switch:checked { background: var(--accent); }
+.link-switch:checked::after { transform: translateX(18px); background: #1a1208; }
+.link-switch:disabled { opacity: .45; cursor: default; }
+.link-switch:focus-visible, .link-orientation:focus-visible, .link-page button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.link-orientation {
+  appearance: none;
+  flex: 0 0 195px;
+  width: 195px;
+  min-height: 40px;
+  padding: 10px 32px 10px 12px;
+  border-radius: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%239a97a3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.link-orientation:disabled { opacity: .45; }
+.link-settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; }
+.link-settings-footer .dim { font-size: 12px; }
+.link-settings-footer button { padding: 9px 16px; }
+.link-saved { color: var(--ok); font-size: 12px; margin-bottom: 0; }
+.link-device-meta { color: var(--text-dim); font-size: 12px; padding-inline: 4px; }
+.link-back { background: none; border: none; color: var(--text-dim); padding: 0; margin-bottom: 20px; }
+.link-network-list { max-height: 250px; overflow-y: auto; }
+.link-wifi-form { display: grid; gap: 18px; max-width: 500px; }
+.link-wifi-form > label { display: grid; gap: 8px; font-size: 13px; }
+.link-wifi-form input { width: 100%; padding: 10px 12px; }
+.link-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+@media (max-width: 820px) {
+  .link-setting-row { gap: 14px; }
+  .link-orientation { flex-basis: 170px; width: 170px; }
+  .link-wifi-summary { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .link-switch, .link-switch::after { transition: none; }
+}
+
+.firmware-overlay { position: fixed; inset: 0; z-index: 100; background: #0009; display: grid; place-items: center; padding: 24px; }
+.firmware-dialog { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: min(580px, 100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 16px 60px #0008; }
+.firmware-dialog h2 { margin-top: 0; }
+.firmware-consent { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0; line-height: 1.5; }
+.firmware-consent input { margin-top: 4px; }
+.firmware-dialog .link-actions { margin-top: 18px; }
+.machine-actions { flex-wrap: wrap; justify-content: flex-end; }
