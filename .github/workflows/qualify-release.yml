@@ -35,6 +35,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: cargo build --locked --example release_update_probe --manifest-path src-tauri/Cargo.toml
+      - name: Embed Windows desktop manifest in the standalone probe
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $mt = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\mt.exe" | Sort-Object FullName | Select-Object -Last 1
+          if (-not $mt) { throw "Windows SDK manifest tool not found" }
+          & $mt.FullName -nologo -manifest src-tauri/examples/release_update_probe.manifest "-outputresource:src-tauri/target/debug/examples/release_update_probe.exe;#1"
+          if ($LASTEXITCODE -ne 0) { throw "Probe manifest embedding failed" }
       - name: Download unchanged signed releases
         shell: bash
         env:

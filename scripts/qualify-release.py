@@ -41,9 +41,7 @@ feed['platforms'] = {target:entry}
 (a.assets/'qualification-feed.json').write_text(json.dumps(feed))
 threading.Thread(target=server.serve_forever,daemon=True).start()
 try:
-    # Cargo supplies native dependency DLL search paths for the test executable.
-    command = ['cargo','run','--locked','--example','release_update_probe','--manifest-path','src-tauri/Cargo.toml','--'] if windows else [str(a.probe)]
-    subprocess.run(command+[target,str(exe),f'http://127.0.0.1:{port}/qualification-feed.json','0.4.2',str(a.output)],check=True,timeout=240)
+    subprocess.run([str(a.probe)]+[target,str(exe),f'http://127.0.0.1:{port}/qualification-feed.json','0.4.2',str(a.output)],check=True,timeout=240)
     assert (a.output/'signature-verified.json').is_file()
     if windows:
         deadline=time.monotonic()+120
