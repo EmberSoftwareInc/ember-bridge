@@ -5,6 +5,7 @@ import argparse, contextlib, functools, hashlib, http.server, json, os, pathlib
 import shutil, subprocess, sys, threading, time, urllib.request
 
 p = argparse.ArgumentParser(description=__doc__)
+p.add_argument('--installer', choices=['nsis','msi','appimage'], default='nsis')
 p.add_argument('--assets', type=pathlib.Path, required=True)
 p.add_argument('--previous', type=pathlib.Path, required=True)
 p.add_argument('--probe', type=pathlib.Path, required=True)
@@ -15,13 +16,17 @@ a.output.mkdir(parents=True, exist_ok=False); a.output = a.output.resolve()
 (a.output/'ALLOW_DISPOSABLE_UPDATE').touch()
 windows = sys.platform == 'win32'
 assert windows or sys.platform == 'linux', 'Hosted probe currently supports Windows and Linux'
-target = 'windows-x86_64-nsis' if windows else 'linux-x86_64'
-pattern = '*-setup.exe' if windows else '*.AppImage'
+target = 'windows-x86_64-'+a.installer if windows else 'linux-x86_64'
+pattern = ('*.msi' if a.installer=='msi' else '*-setup.exe') if windows else '*.AppImage'
 old, = a.previous.glob(pattern)
 new, = a.assets.glob(pattern)
 install = a.output/'installed'; install.mkdir()
 if windows:
-    subprocess.run([str(old), '/S', '/D='+str(install)], check=True, timeout=180)
+    if a.installer=='msi':
+        result=subprocess.run(['msiexec','/i',str(old),'/qn','/norestart','INSTALLDIR='+str(install),'/L*v',str(a.output/'initial-msi.log')],timeout=240)
+        assert result.returncode in (0,3010), f'MSI install failed: {result.returncode}'
+    else:
+        subprocess.run([str(old), '/S', '/D='+str(install)], check=True, timeout=180)
     executables = list(install.glob('*.exe'))
     exe, = [x for x in executables if 'uninstall' not in x.name.lower()]
 else:

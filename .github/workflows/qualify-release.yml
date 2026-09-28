@@ -12,7 +12,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-latest]
+        include:
+          - os: ubuntu-22.04
+            installer: appimage
+          - os: windows-latest
+            installer: nsis
+          - os: windows-latest
+            installer: msi
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     steps:
@@ -27,6 +33,7 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
       - name: Linux libraries and virtual display
         if: runner.os == 'Linux'
         run: |
@@ -51,19 +58,19 @@ jobs:
           mkdir -p qualification/assets qualification/previous
           gh release download v0.5.1 --repo "$GITHUB_REPOSITORY" --dir qualification/assets
           if [ "$RUNNER_OS" = Windows ]; then
-            gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --dir qualification/previous
+            gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --pattern '*.msi' --dir qualification/previous
           else
             gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*.AppImage' --dir qualification/previous
           fi
       - name: Linux signed upgrade and launch
         if: runner.os == 'Linux'
-        run: xvfb-run -a python scripts/qualify-release.py --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe --output qualification/evidence
+        run: xvfb-run -a python scripts/qualify-release.py --installer ${{ matrix.installer }} --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe --output qualification/evidence
       - name: Windows signed upgrade and launch
         if: runner.os == 'Windows'
-        run: python scripts/qualify-release.py --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe.exe --output qualification/evidence
+        run: python scripts/qualify-release.py --installer ${{ matrix.installer }} --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe.exe --output qualification/evidence
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: qualification-${{ runner.os }}
+          name: qualification-${{ runner.os }}-${{ matrix.installer }}
           path: qualification/evidence
           if-no-files-found: ignore

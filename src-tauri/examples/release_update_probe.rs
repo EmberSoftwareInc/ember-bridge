@@ -43,10 +43,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .no_proxy()
         .restart_after_install(false);
     #[cfg(windows)]
-    let builder = builder.installer_arg(format!(
-        "/D={}",
-        PathBuf::from(&args[2]).parent().unwrap().display()
-    ));
+    let builder = {
+        let path = PathBuf::from(&args[2]);
+        let directory = path.parent().unwrap().display();
+        if args[1].ends_with("-msi") {
+            builder
+                .installer_arg(format!("INSTALLDIR=\"{directory}\""))
+                .installer_arg("/L*v")
+                .installer_arg(format!("\"{}\"", evidence.join("update-msi.log").display()))
+        } else {
+            builder.installer_arg(format!("/D={directory}"))
+        }
+    };
     tauri::async_runtime::block_on(async {
         let update = builder
             .build()?
