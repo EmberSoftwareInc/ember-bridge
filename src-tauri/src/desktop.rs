@@ -37,7 +37,11 @@ fn navigate(app: &tauri::AppHandle, urls: Vec<reqwest::Url>) {
 pub fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(Navigation::default());
     #[cfg(any(target_os = "linux", target_os = "windows"))]
-    app.deep_link().register_all()?;
+    if let Err(error) = app.deep_link().register_all() {
+        // URL launch support is optional; a missing desktop helper or denied
+        // registration must not prevent local setup and file transfers.
+        tracing::warn!(%error, "Could not register ember-bridge URL handler");
+    }
     let handle = app.handle().clone();
     app.deep_link()
         .on_open_url(move |event| navigate(&handle, event.urls()));

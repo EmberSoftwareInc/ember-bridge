@@ -1,0 +1,76 @@
+name: Qualify release installers
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  updater:
+    # GitHub hides draft releases from tokens without repository write access.
+    # The job only downloads assets; it never edits or publishes a release.
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            installer: appimage
+          - os: windows-latest
+            installer: nsis
+          - os: windows-latest
+            installer: msi
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+      - name: Linux libraries and virtual display
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf build-essential libssl-dev libgtk-3-dev libxdo-dev libudev-dev xvfb
+      - run: npm ci
+      - run: npm run build
+      - run: cargo build --locked --example release_update_probe --manifest-path src-tauri/Cargo.toml
+      - name: Embed Windows desktop manifest in the standalone probe
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $mt = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\mt.exe" | Sort-Object FullName | Select-Object -Last 1
+          if (-not $mt) { throw "Windows SDK manifest tool not found" }
+          & $mt.FullName -nologo -manifest src-tauri/examples/release_update_probe.manifest "-outputresource:src-tauri/target/debug/examples/release_update_probe.exe;#1"
+          if ($LASTEXITCODE -ne 0) { throw "Probe manifest embedding failed" }
+      - name: Download unchanged signed releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p qualification/assets qualification/previous
+          gh release download v0.5.1 --repo "$GITHUB_REPOSITORY" --dir qualification/assets
+          if [ "$RUNNER_OS" = Windows ]; then
+            gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*-setup.exe' --pattern '*.msi' --dir qualification/previous
+          else
+            gh release download v0.4.2 --repo "$GITHUB_REPOSITORY" --pattern '*.AppImage' --dir qualification/previous
+          fi
+      - name: Linux signed upgrade and launch
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python scripts/qualify-release.py --installer ${{ matrix.installer }} --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe --output qualification/evidence
+      - name: Windows signed upgrade and launch
+        if: runner.os == 'Windows'
+        run: python scripts/qualify-release.py --installer ${{ matrix.installer }} --assets qualification/assets --previous qualification/previous --probe src-tauri/target/debug/examples/release_update_probe.exe --output qualification/evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qualification-${{ runner.os }}-${{ matrix.installer }}
+          path: qualification/evidence
+          if-no-files-found: ignore
