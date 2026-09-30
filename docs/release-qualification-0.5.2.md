@@ -1,7 +1,8 @@
 # Ember Bridge 0.5.2 release qualification
 
-Status: candidate preparation. Keep the GitHub release as a draft until the
-signed installer checks and final macOS application check are complete.
+Status: qualified for stable publication. The signed installer checks and final
+macOS application check are complete. The release uses the exact assets built
+from tag `v0.5.2` at `cbcc5e5790de36dac9ced9fee9a7f433be43caa2`.
 
 ## Changes
 
@@ -30,17 +31,31 @@ the Brother NQ1700E and the machine stayed responsive. This is not a separate
 machine-preview qualification of the development image. No stitching was tested.
 The physical tests used the macOS test build before the 0.5.2 version bump.
 
-## Draft artifact checks
+## Signed artifact checks
 
-The release workflow builds signed updater artifacts for macOS universal,
-Windows, and Linux. Run the installer qualification workflow on the candidate
-ref with `candidate=0.5.2` and `previous=0.5.1` after all draft assets exist.
-It tests the real signed upgrade and updated application startup for Windows
-NSIS/MSI and Linux AppImage in disposable environments. It does not publish.
+The [release build](https://github.com/EmberSoftwareInc/ember-bridge/actions/runs/36651250000)
+passed for macOS universal, Windows, and Linux. All 14 assets were downloaded and
+hashed before qualification. Every updater-feed entry references the expected
+immutable 0.5.2 asset and matches its detached signature file.
 
-Before stable publication, also verify the macOS signed update, code signature,
-notarization, and normal application launch. Record the actual workflow results
-and remaining limitations here; a successful source build alone is insufficient.
+The [installer qualification workflow](https://github.com/EmberSoftwareInc/ember-bridge/actions/runs/36654573427)
+passed the real signed 0.5.1-to-0.5.2 upgrade, installation, and updated-application
+startup for Windows NSIS, Windows MSI, and Linux AppImage. The probe verifies the
+production updater signature and installs the actual release bytes into a
+disposable directory. Its loopback feed changes download URLs only, allowing
+private draft assets to be tested without publishing them.
+
+On macOS, the same real updater upgraded a disposable copy of signed 0.5.1 to
+0.5.2. Strict code-signature verification passed, and Gatekeeper accepted the
+bundle as a notarized Developer ID application. Normal Launch Services startup
+displayed the application; the local API reported 0.5.2. Both saved machines
+remained visible, and the complete configuration compared unchanged against a
+private baseline, including pairing and channel preferences.
+
+The signed application's Link firmware panel reached the physical dongle over
+local Wi-Fi, displayed Stable and installed version 0.3.6, and correctly reported
+no different compatible recommendation. This check did not install firmware;
+the earlier physical USB round trip is documented separately above.
 
 These checks do not cover interactive Windows/Linux UI, repeated local Wi-Fi
 firmware installation, physical power cuts, or multi-day endurance. The Ember
