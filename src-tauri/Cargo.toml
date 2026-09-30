@@ -4,6 +4,7 @@ version = "0.5.2"
 description = "Ember Bridge — desktop bridge between the Ember embroidery editor and WiFi-capable embroidery machines"
 authors = ["Ember"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary

@@ -218,3 +218,8 @@ capable devices, and signature-verified desktop updates.
 See [desktop integration and releases](docs/desktop-integration.md) for the web-app
 handoff, update-signing setup, migration notes, and remaining hardware checks.
 Future: additional manufacturer backends and concurrent uploads to different devices.
+
+## License
+
+Ember Bridge is open source under the [MIT License](LICENSE). Third-party
+dependencies retain their own licenses and copyright notices.
