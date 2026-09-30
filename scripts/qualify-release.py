@@ -8,6 +8,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--installer', choices=['nsis','msi','appimage'], default='nsis')
 p.add_argument('--assets', type=pathlib.Path, required=True)
 p.add_argument('--previous', type=pathlib.Path, required=True)
+p.add_argument('--previous-version', required=True, help='Version installed before the upgrade')
 p.add_argument('--probe', type=pathlib.Path, required=True)
 p.add_argument('--output', type=pathlib.Path, required=True)
 a = p.parse_args()
@@ -46,7 +47,7 @@ feed['platforms'] = {target:entry}
 (a.assets/'qualification-feed.json').write_text(json.dumps(feed))
 threading.Thread(target=server.serve_forever,daemon=True).start()
 try:
-    subprocess.run([str(a.probe)]+[target,str(exe),f'http://127.0.0.1:{port}/qualification-feed.json','0.4.2',str(a.output)],check=True,timeout=240)
+    subprocess.run([str(a.probe)]+[target,str(exe),f'http://127.0.0.1:{port}/qualification-feed.json',a.previous_version,str(a.output)],check=True,timeout=240)
     assert (a.output/'signature-verified.json').is_file()
     if windows:
         deadline=time.monotonic()+120
@@ -80,5 +81,5 @@ try:
             if process.poll() is None: process.terminate()
             try: process.wait(timeout=15)
             except subprocess.TimeoutExpired: process.kill();process.wait()
-    print(f'{target}: signed update 0.4.2 -> {feed["version"]}, installation and launch passed')
+    print(f'{target}: signed update {a.previous_version} -> {feed["version"]}, installation and launch passed')
 finally: server.shutdown()

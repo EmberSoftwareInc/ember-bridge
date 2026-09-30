@@ -41,6 +41,10 @@ pub struct AppConfig {
     pub allowed_origins: Vec<String>,
     #[serde(default)]
     pub machines: Vec<SavedMachine>,
+    /// This Bridge installation's preference, keyed by Link hardware serial.
+    #[serde(default)]
+    pub link_release_channels:
+        std::collections::BTreeMap<String, crate::release_channel::ReleaseChannel>,
 }
 
 impl AppConfig {
@@ -49,6 +53,7 @@ impl AppConfig {
             api_token: generate_token(),
             allowed_origins: Vec::new(),
             machines: Vec::new(),
+            link_release_channels: Default::default(),
         }
     }
 }
@@ -138,4 +143,51 @@ fn write_config(path: &std::path::Path, config: &AppConfig) -> std::io::Result<(
         std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o600))?;
     }
     std::fs::rename(&tmp, path)
+}
+
+#[cfg(test)]
+mod channel_tests {
+    use super::*;
+    use crate::release_channel::ReleaseChannel;
+    #[tokio::test]
+    async fn legacy_config_defaults_stable_and_preferences_survive_reload_by_serial() {
+        let old: AppConfig =
+            serde_json::from_str(r#"{"apiToken":"test-token","machines":[]}"#).unwrap();
+        assert!(old.link_release_channels.is_empty());
+        let dir = std::env::temp_dir().join(format!(
+            "bridge-channel-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let store = ConfigStore::load_or_create(dir.clone()).unwrap();
+        let token = store.get().await.api_token;
+        store
+            .update(|c| {
+                c.link_release_channels
+                    .insert("LINK-A".into(), ReleaseChannel::Dev);
+            })
+            .await
+            .unwrap();
+        let reloaded = ConfigStore::load_or_create(dir.clone())
+            .unwrap()
+            .get()
+            .await;
+        assert_eq!(reloaded.api_token, token);
+        assert_eq!(
+            reloaded.link_release_channels.get("LINK-A"),
+            Some(&ReleaseChannel::Dev)
+        );
+        assert_eq!(
+            reloaded
+                .link_release_channels
+                .get("LINK-B")
+                .copied()
+                .unwrap_or_default(),
+            ReleaseChannel::Stable
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 }

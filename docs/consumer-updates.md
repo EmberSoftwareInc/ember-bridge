@@ -35,7 +35,30 @@ macOS, Windows and Linux before advertising automatic updates as production-read
   need one signed USB bootstrap update before automatic local release selection.
   Cloud-capable older images retain their existing cloud updater.
 
-The public feed is
+### Stable and Development channels
+
+The firmware dialog defaults to **Stable**. Select **Development**, explicitly
+acknowledge experimental builds, and **Save channel** to opt in. The preference
+is saved by hardware serial in this Bridge installation, shared between its USB
+and local Wi-Fi views. It does not change the account's cloud preference or
+Bridge's own desktop app update feed. Changing channels never installs firmware.
+
+Development uses the separate recommendation at
+`https://raw.githubusercontent.com/EmberSoftwareInc/ember-link/release-channels/dev.json`.
+An empty dev feed means no dev build is recommended; there is no fallback to an
+unrelated release. Only numbered `X.Y.Z-dev.N` versions are accepted there.
+Stable accepts exact `X.Y.Z` versions, including the older stable catalog without
+an explicit top-level channel. Both reject contradictory labels and version/tag
+mismatches. Signature, board/layout, key, and size checks still apply.
+
+Returning to Stable, downgrading within a channel, or replacing an unrecognized
+version requires a second explicit approval. The dialog shows both versions and
+warns that newer features/settings may not survive. Installation rechecks the
+saved channel, approved running version, release ID/hash, and fresh device state.
+A changed preference or version requires a new check. Actual migration behavior
+must be qualified for the chosen release; consent does not prove compatibility.
+
+The Stable public feed is
 `https://github.com/EmberSoftwareInc/ember-link/releases/latest/download/link-releases.json`.
 It is a schema-1 object with a `releases` list. Each entry is the exact manifest
 created by Link's signature-verifying tool, plus a tagged GitHub `url`. There is

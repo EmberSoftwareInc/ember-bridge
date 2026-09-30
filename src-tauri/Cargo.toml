@@ -1,6 +1,6 @@
 [package]
 name = "ember-bridge"
-version = "0.5.1"
+version = "0.5.2"
 description = "Ember Bridge — desktop bridge between the Ember embroidery editor and WiFi-capable embroidery machines"
 authors = ["Ember"]
 edition = "2021"
@@ -52,6 +52,7 @@ if-addrs = "0.13"
 futures = "0.3"
 bytes = "1"
 sha2 = "0.10"
+semver = "1"
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
