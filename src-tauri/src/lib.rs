@@ -16,11 +16,12 @@
 pub mod brother;
 pub mod config;
 mod desktop;
-mod link_updates;
 pub mod dongle_setup;
 pub mod emberconnect;
+mod link_updates;
 pub mod logging;
 pub mod machine;
+pub mod release_channel;
 pub mod server;
 
 use serde::Serialize;
@@ -210,6 +211,7 @@ pub fn run() {
             local_api_info,
             desktop::take_navigation,
             link_updates::link_check_update,
+            link_updates::link_set_update_channel,
             link_updates::link_install_update,
             desktop::check_update,
             desktop::install_update,

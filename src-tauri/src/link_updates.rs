@@ -1,7 +1,11 @@
 //! Desktop-only firmware delivery. Public catalogues contain no device credentials.
 //! Installation rechecks the approved release and target; neither UI nor browser APIs
 //! may supply an arbitrary firmware URL. The dongle verifies the RSA signature.
-use crate::{dongle_setup, server::state::AppState};
+use crate::{
+    dongle_setup,
+    release_channel::{install_action, ReleaseChannel},
+    server::state::AppState,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -10,6 +14,8 @@ use tauri::Emitter;
 
 const CATALOG: &str =
     "https://github.com/EmberSoftwareInc/ember-link/releases/latest/download/link-releases.json";
+const DEV_CATALOG: &str =
+    "https://raw.githubusercontent.com/EmberSoftwareInc/ember-link/release-channels/dev.json";
 const MAX_IMAGE: usize = 3 * 1024 * 1024;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "transport", rename_all = "lowercase")]
@@ -41,6 +47,8 @@ pub struct Release {
 #[derive(Deserialize)]
 struct Catalog {
     schema: u8,
+    #[serde(default)]
+    channel: Option<ReleaseChannel>,
     releases: Vec<Release>,
 }
 #[derive(Deserialize)]
@@ -55,6 +63,8 @@ struct Capabilities {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Offer {
+    channel: ReleaseChannel,
+    install_action: Option<String>,
     current_version: String,
     supported: bool,
     release: Option<Release>,
@@ -86,11 +96,15 @@ fn artifact_url(s: &str) -> bool {
         && parts[5] != "latest"
         && parts[6].ends_with(".bin")
 }
-fn validate_catalog(c: &Catalog) -> Result<(), String> {
-    if c.schema != 1 || c.releases.len() > 16 {
+fn validate_catalog(c: &Catalog, channel: ReleaseChannel) -> Result<(), String> {
+    if c.schema != 1
+        || c.releases.len() > 16
+        || c.channel.is_some_and(|value| value != channel)
+        || (channel == ReleaseChannel::Dev && c.channel != Some(channel))
+    {
         return Err("Unsupported firmware catalogue".into());
     }
-    let mut channels = std::collections::HashSet::new();
+    let mut variants = std::collections::HashSet::new();
     for r in &c.releases {
         if r.schema != 1
             || r.release_id.is_empty()
@@ -111,8 +125,13 @@ fn validate_catalog(c: &Catalog) -> Result<(), String> {
             || !hash_valid(&r.sha256)
             || !hash_valid(&r.signing_key_id)
             || r.notes.len() > 16000
+            || !channel.accepts(&r.target_version)
             || !artifact_url(&r.url)
-            || !channels.insert((&r.board_id, &r.layout_id, &r.signing_key_id))
+            || reqwest::Url::parse(&r.url)
+                .ok()
+                .and_then(|u| u.path().split('/').nth(5).map(str::to_owned))
+                != Some(format!("v{}", r.target_version))
+            || !variants.insert((&r.board_id, &r.layout_id, &r.signing_key_id))
         {
             return Err("Invalid or ambiguous firmware catalogue".into());
         }
@@ -185,16 +204,23 @@ async fn bounded(mut response: reqwest::Response, max: usize) -> Result<Vec<u8>,
     }
     Ok(bytes)
 }
-async fn catalog() -> Result<Catalog, String> {
-    let response = public_client()?.get(CATALOG).send().await.map_err(|_| {
-        "Cannot reach the firmware catalogue. Check your internet connection.".to_string()
-    })?;
+async fn catalog(channel: ReleaseChannel) -> Result<Catalog, String> {
+    let response = public_client()?
+        .get(match channel {
+            ReleaseChannel::Stable => CATALOG,
+            ReleaseChannel::Dev => DEV_CATALOG,
+        })
+        .send()
+        .await
+        .map_err(|_| {
+            "Cannot reach the firmware catalogue. Check your internet connection.".to_string()
+        })?;
     if response.status().as_u16() == 404 {
         return Err("No public firmware catalogue has been published yet.".into());
     }
     let c: Catalog = serde_json::from_slice(&bounded(response, 256 * 1024).await?)
         .map_err(|_| "Invalid firmware catalogue".to_string())?;
-    validate_catalog(&c)?;
+    validate_catalog(&c, channel)?;
     Ok(c)
 }
 fn lan_client() -> Result<reqwest::Client, String> {
@@ -275,6 +301,31 @@ async fn device_info(state: &AppState, target: &Target) -> Result<Value, String>
     Ok(i)
 }
 #[tauri::command]
+pub async fn link_set_update_channel(
+    state: tauri::State<'_, Arc<AppState>>,
+    target: Target,
+    channel: ReleaseChannel,
+    development_confirmed: bool,
+) -> Result<ReleaseChannel, String> {
+    if channel == ReleaseChannel::Dev && !development_confirmed {
+        return Err("Confirm that Development builds are experimental.".into());
+    }
+    let _lifecycle = state
+        .lifecycle
+        .try_write()
+        .map_err(|_| "Finish device operations before changing channels")?;
+    device_info(&state, &target).await?;
+    state
+        .config
+        .update(|c| {
+            c.link_release_channels
+                .insert(target.serial().into(), channel);
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(channel)
+}
+#[tauri::command]
 pub async fn link_check_update(
     state: tauri::State<'_, Arc<AppState>>,
     target: Target,
@@ -289,7 +340,17 @@ pub async fn link_check_update(
         .cloned()
         .and_then(|v| serde_json::from_value::<Capabilities>(v).ok())
         .is_some_and(|c| c.firmware_update == 1 && !c.trusted_key_ids.is_empty());
+    let channel = state
+        .config
+        .get()
+        .await
+        .link_release_channels
+        .get(target.serial())
+        .copied()
+        .unwrap_or_default();
     let mut offer = Offer {
+        channel,
+        install_action: None,
         current_version: info
             .get("version")
             .and_then(Value::as_str)
@@ -312,7 +373,11 @@ pub async fn link_check_update(
             Some("Link is still confirming its current firmware. Check again shortly.".into());
         return Ok(offer);
     }
-    offer.release = select_release(&catalog().await?, &info);
+    offer.release = select_release(&catalog(channel).await?, &info);
+    offer.install_action = offer
+        .release
+        .as_ref()
+        .map(|r| install_action(&offer.current_version, &r.target_version).into());
     Ok(offer)
 }
 fn verify_image(image: &[u8], r: &Release) -> Result<(), String> {
@@ -362,6 +427,9 @@ pub async fn link_install_update(
     release_id: String,
     sha256: String,
     confirmed: bool,
+    channel: ReleaseChannel,
+    current_version: String,
+    replacement_confirmed: bool,
 ) -> Result<Value, String> {
     if !confirmed {
         return Err("Confirm the machine is idle and Link may restart.".into());
@@ -378,9 +446,27 @@ pub async fn link_install_update(
         return Err("Finish or cancel queued transfers before updating.".into());
     }
     let before = device_info(&state, &target).await?;
-    let release = select_release(&catalog().await?, &before)
+    let saved_channel = state
+        .config
+        .get()
+        .await
+        .link_release_channels
+        .get(target.serial())
+        .copied()
+        .unwrap_or_default();
+    if saved_channel != channel
+        || before.get("version").and_then(Value::as_str) != Some(current_version.as_str())
+    {
+        return Err("Link or its release channel changed. Check again before installing.".into());
+    }
+    let release = select_release(&catalog(channel).await?, &before)
         .filter(|r| r.release_id == release_id && r.sha256 == sha256)
         .ok_or("The recommended release changed or is incompatible. Check again.")?;
+    if install_action(&current_version, &release.target_version) != "update"
+        && !replacement_confirmed
+    {
+        return Err("Explicitly approve replacing the installed version; older firmware may lose newer settings.".into());
+    }
     let phase = |s: &str| {
         let _ = app.emit("link-firmware-progress", s);
     };
@@ -401,6 +487,7 @@ pub async fn link_install_update(
         || select_release(
             &Catalog {
                 schema: 1,
+                channel: Some(channel),
                 releases: vec![release.clone()],
             },
             &fresh,
@@ -499,16 +586,42 @@ mod tests {
         ] {
             assert!(!artifact_url(url));
         }
-        assert!(validate_catalog(&Catalog {
-            schema: 1,
-            releases: vec![r.clone(), r]
-        })
+        assert!(validate_catalog(
+            &Catalog {
+                schema: 1,
+                channel: None,
+                releases: vec![r.clone(), r]
+            },
+            ReleaseChannel::Stable
+        )
         .is_err());
+    }
+    #[test]
+    fn channel_validation_rejects_cross_channel_and_mislabeled_releases() {
+        let mut c = Catalog {
+            schema: 1,
+            channel: None,
+            releases: vec![release()],
+        };
+        assert!(validate_catalog(&c, ReleaseChannel::Stable).is_ok()); // legacy stable catalogue
+        assert!(validate_catalog(&c, ReleaseChannel::Dev).is_err());
+        c.channel = Some(ReleaseChannel::Dev);
+        assert!(validate_catalog(&c, ReleaseChannel::Dev).is_err());
+        c.releases[0].target_version = "0.3.7-dev.1".into();
+        c.releases[0].url = "https://github.com/EmberSoftwareInc/ember-link/releases/download/v0.3.7-dev.1/ember-link.bin".into();
+        assert!(validate_catalog(&c, ReleaseChannel::Dev).is_ok());
+        assert!(validate_catalog(&c, ReleaseChannel::Stable).is_err());
+        c.channel = Some(ReleaseChannel::Stable);
+        assert!(validate_catalog(&c, ReleaseChannel::Stable).is_err());
+        c.channel = Some(ReleaseChannel::Dev);
+        c.releases.clear();
+        assert!(validate_catalog(&c, ReleaseChannel::Dev).is_ok()); // withdrawn/empty dev feed
     }
     #[test]
     fn selection_requires_reported_capabilities_key_size_and_healthy_boot() {
         let c = Catalog {
             schema: 1,
+            channel: None,
             releases: vec![release()],
         };
         let base = info();
