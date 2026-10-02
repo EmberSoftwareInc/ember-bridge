@@ -87,7 +87,9 @@ test("accepted image without a confirmed reboot is not reported as success", asy
   expect(screen.queryByText(/Dongle restarted successfully/)).toBeNull(); await ready();
 });
 test("idle status refresh reflects Wi-Fi joining without replacing edited fields", async () => {
-  vi.useFakeTimers();
+  // Only advance the polling timer. Faking performance.now moves React's
+  // scheduling clock backwards when real timers resume in later tests.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   try {
     fake.info.mockResolvedValue({ ...info(), provisioned: true, wifi: { ...info().wifi, connected: false } });
     await act(async () => { render(<SetupPage onReady={() => {}} />); });
