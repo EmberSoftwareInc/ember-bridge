@@ -3,7 +3,7 @@
  * Provisioning joins the network live and pairs this Bridge for local transfers.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LinkFirmwareButton } from "../components/LinkFirmware";
 import {
   asDongleError,
@@ -385,7 +385,7 @@ function FirmwareUpdate({
   );
 }
 
-function DisplayOptions({ settings, busy, onSave }: {
+export function DisplayOptions({ settings, busy, onSave }: {
   settings?: DisplaySettings; busy: boolean;
   onSave: (settings: DisplaySettings) => Promise<DisplaySettings>;
 }) {
@@ -396,7 +396,9 @@ function DisplayOptions({ settings, busy, onSave }: {
   const [error, setError] = useState("");
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
-  useEffect(() => {
+  // Sync device settings during commit, before the controls can receive input.
+  // A passive effect can run after the first edit and overwrite that edit.
+  useLayoutEffect(() => {
     if (settings) { setEnabled(settings.enabled); setRotation(settings.rotation); setLedEnabled(settings.ledEnabled); }
   }, [settings?.enabled, settings?.rotation, settings?.ledEnabled]);
   async function save() {

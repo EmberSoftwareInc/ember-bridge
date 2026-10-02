@@ -102,3 +102,22 @@ returns version 0.5.3 and matches the qualified feed byte for byte. All 14 asset
 were downloaded anonymously after publication; their sizes and SHA-256 hashes
 match the qualification record. Release notes state the Files firmware requirement
 and remaining development-firmware reliability limitations.
+
+## Post-publication setup-state regression
+
+The documentation-only follow-up triggered
+[CI run 37076845524](https://github.com/EmberSoftwareInc/ember-bridge/actions/runs/37076845524),
+which failed the screen-settings save test: the selected 180-degree orientation
+was submitted as 0 degrees. The earlier timer-isolation change was insufficient.
+
+Local reproduction and event tracing found an application-state race: the
+initial passive settings synchronization effect could run after the first edit,
+overwriting that edit with the reported device values. This affects initial
+screen, orientation and LED edits; it does not change the verified installer
+signatures or the earlier file-operation qualification results.
+
+The follow-up fix synchronizes settings in a layout effect before the controls
+can receive input. Three deterministic first-interaction regression cases fail
+with the old synchronization and pass with the fix. The original failing sequence
+also passed 500 repetitions after the fix. Published 0.5.3 assets remain unchanged;
+distributing this application fix requires a subsequent patch release.
