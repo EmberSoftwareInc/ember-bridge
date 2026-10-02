@@ -13,6 +13,7 @@ import { listen } from "@tauri-apps/api/event";
 import emberIcon from "./assets/ember-icon.svg";
 import { MachinesPage } from "./pages/MachinesPage";
 import { SetupPage } from "./pages/SetupPage";
+import { FilesPage } from "./pages/FilesPage";
 import { SendPage } from "./pages/SendPage";
 import { LogsPage } from "./pages/LogsPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -21,11 +22,12 @@ import { AppUpdatesProvider, useAppUpdates } from "./hooks/useAppUpdates";
 import { LinkFirmwareProvider } from "./components/LinkFirmware";
 import "./App.css";
 
-type Page = "machines" | "setup" | "send" | "logs" | "settings" | "help";
+type Page = "machines" | "setup" | "files" | "send" | "logs" | "settings" | "help";
 
 const PAGES: { id: Page; label: string }[] = [
   { id: "machines", label: "Machines" },
   { id: "send", label: "Send" },
+  { id: "files", label: "Files" },
   { id: "logs", label: "Logs" },
   { id: "settings", label: "Settings" },
   { id: "help", label: "Help" },
@@ -173,6 +175,7 @@ function Shell() {
         )}
         {page === "setup" && <SetupPage onReady={() => setPage("machines")} />}
         {page === "send" && <SendPage />}
+        {page === "files" && <FilesPage onSend={() => setPage("send")} />}
         {page === "logs" && <LogsPage />}
         {page === "settings" && <SettingsPage />}
         {page === "help" && <HelpPage />}

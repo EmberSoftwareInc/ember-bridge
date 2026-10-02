@@ -71,6 +71,7 @@ impl EmberConnectClient {
             serial: OnceLock::new(),
             http: reqwest::Client::builder()
                 .connect_timeout(CONNECT_TIMEOUT)
+                .redirect(reqwest::redirect::Policy::none())
                 // The ESP32 http server has a handful of sockets; keeping
                 // idle connections open starves other clients.
                 .pool_max_idle_per_host(0)
@@ -195,6 +196,69 @@ impl EmberConnectClient {
             .await
             .map_err(map_transport_error)?;
         decode_json::<T>(response).await
+    }
+
+    /// Explicit card operation: one POST, never replay after an ambiguous result.
+    pub async fn filesystem(
+        &self,
+        expected_serial: &str,
+        request: &serde_json::Value,
+    ) -> Result<serde_json::Value, MachineError> {
+        let health = self.probe_health().await?;
+        if !health.is_ember_connect() || health.serial.as_deref() != Some(expected_serial) {
+            return Err(MachineError::IdentityChanged);
+        }
+        if health.file_system_protocol_version != 1 {
+            return Err(MachineError::Protocol(
+                "Update Ember Link firmware to use the file browser.".into(),
+            ));
+        }
+        let _ = self.serial.set(health.serial);
+        // Establish authorization using a read BEFORE the only mutation attempt.
+        let _: DongleInfo = self.get_json("/api/info").await?;
+        let token = self
+            .stored_token()
+            .await?
+            .ok_or_else(|| MachineError::PairingRequired {
+                hint: "Pair Link with Bridge before managing files.".into(),
+            })?;
+        let response = self
+            .http
+            .post(self.url("/api/fs"))
+            .bearer_auth(token)
+            .json(request)
+            .timeout(Duration::from_secs(45))
+            .send()
+            .await
+            .map_err(|_| MachineError::DeliveryUnknown)?;
+        if !response.status().is_success() {
+            let status = response.status().as_u16();
+            if status >= 500 {
+                return Err(MachineError::DeliveryUnknown);
+            }
+            let body = response
+                .json::<ErrorResponse>()
+                .await
+                .map_err(|_| MachineError::DeliveryUnknown)?;
+            let message = match body.error.code.as_str() {
+                "busy" => return Err(MachineError::Busy),
+                "stale_listing" => "The folder changed. Refresh it before making another change.",
+                "already_exists" => "That name already exists. Choose another name; nothing was replaced.",
+                "folder_not_empty" => "This folder contains files. Move or delete them first.",
+                "folder_too_large" => "This folder exceeds the file browser’s 4,096-entry limit. Organize it on a computer first.",
+                "storage_unavailable" => "The card is unavailable. Check the card and wait for Link to be ready.",
+                "unauthorized" => "Link pairing changed. Reconnect Link to Bridge before trying again.",
+                "unsupported_folder_tree" => "This folder contains unsupported paths or too many entries. Organize it on a computer before moving it.",
+                "invalid_destination" => "A folder cannot be moved into itself. Choose a different destination.",
+                "invalid_request" => "Check the path and exact spelling. Use names without reserved characters; paths may have at most eight components.",
+                _ => "The card operation could not be confirmed. Refresh and inspect the folder before trying again.",
+            };
+            return Err(MachineError::Protocol(message.into()));
+        }
+        response
+            .json()
+            .await
+            .map_err(|_| MachineError::DeliveryUnknown)
     }
 
     async fn fetch_dongle_info(&self) -> Result<DongleInfo, MachineError> {

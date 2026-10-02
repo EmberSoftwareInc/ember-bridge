@@ -42,6 +42,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/pairing/respond", post(routes::pairing_respond))
         .route("/api/send", post(routes::send))
         .route("/api/files", delete(routes::delete_file))
+        .route(
+            "/api/link/filesystem",
+            post(routes::filesystem).layer(DefaultBodyLimit::max(1024)),
+        )
         .route("/api/jobs/{id}/cancel", post(routes::cancel_job))
         .route("/api/jobs/{id}/resolve", post(routes::resolve_job))
         .route("/api/jobs", get(routes::list_jobs))

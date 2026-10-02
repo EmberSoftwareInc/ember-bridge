@@ -10,6 +10,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   ApiErrorBody,
+  LinkFolder,
+  LinkFileOperation,
   BridgeStatus,
   JobRecord,
   LogsResponse,
@@ -163,6 +165,14 @@ export class BridgeClient {
       { method: "DELETE" },
     );
   }
+  filesystem(ip: string, serial: string, operation: LinkFileOperation): Promise<LinkFolder | { ok: true }> {
+    return this.request(`/api/link/filesystem?${new URLSearchParams({ip, serial, manufacturer: "emberconnect"})}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...operation, confirmedIdle: true }),
+    });
+  }
+
   cancelJob(id: string): Promise<{ job: JobRecord }> {
     return this.request(`/api/jobs/${encodeURIComponent(id)}/cancel`, {
       method: "POST",

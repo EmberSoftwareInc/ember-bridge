@@ -761,3 +761,53 @@ async fn queued_send_can_be_cancelled_through_the_api() {
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(body_json(response).await["job"]["state"], "cancelled");
 }
+
+#[tokio::test]
+async fn filesystem_route_requires_auth_identity_local_ip_and_idle_consent() {
+    let app = test_app().await;
+    for (query, body, token, expected) in [
+        (
+            "ip=192.168.1.4&manufacturer=emberconnect&serial=A",
+            r#"{"confirmedIdle":true}"#,
+            false,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "ip=192.168.1.4&manufacturer=emberconnect",
+            r#"{"confirmedIdle":true}"#,
+            true,
+            StatusCode::BAD_REQUEST,
+        ),
+        (
+            "ip=192.168.1.4&manufacturer=Brother&serial=A",
+            r#"{"confirmedIdle":true}"#,
+            true,
+            StatusCode::BAD_REQUEST,
+        ),
+        (
+            "ip=192.168.1.4&manufacturer=emberconnect&serial=A",
+            r#"{"confirmedIdle":false}"#,
+            true,
+            StatusCode::BAD_REQUEST,
+        ),
+        (
+            "ip=8.8.8.8&manufacturer=emberconnect&serial=A",
+            r#"{"confirmedIdle":true}"#,
+            true,
+            StatusCode::BAD_REQUEST,
+        ),
+    ] {
+        let mut request = Request::post(format!("/api/link/filesystem?{query}"))
+            .header(header::CONTENT_TYPE, "application/json");
+        if token {
+            request = request.header(header::AUTHORIZATION, format!("Bearer {}", app.token));
+        }
+        let response = app
+            .router
+            .clone()
+            .oneshot(request.body(Body::from(body)).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), expected);
+    }
+}

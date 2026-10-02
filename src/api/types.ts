@@ -125,3 +125,13 @@ export interface PendingPairing {
 export interface ApiErrorBody {
   error: { code: string; message: string };
 }
+
+export interface LinkFileEntry { name: string; kind: "file" | "folder"; size: number }
+export interface LinkFolder {
+  path: string; revision: string; entries: LinkFileEntry[];
+  total: number; hidden: number; nextOffset: number | null;
+}
+export type LinkFileOperation =
+  | { op: "list"; path: string; offset?: number; revision?: string }
+  | { op: "mkdir" | "delete"; path: string; revision: string }
+  | { op: "move"; path: string; destination: string; revision: string };
