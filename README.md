@@ -223,3 +223,10 @@ Future: additional manufacturer backends and concurrent uploads to different dev
 
 Ember Bridge is open source under the [MIT License](LICENSE). Third-party
 dependencies retain their own licenses and copyright notices.
+
+## Local Link file browser
+
+The Files page browses folders and supports create, rename, move, and confirmed
+delete over local Wi-Fi with compatible Link firmware. See the
+[local file browser guide](docs/local-file-browser.md) for usage, limits and
+physical qualification steps. Cloud file management is not part of this feature.

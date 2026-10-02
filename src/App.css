@@ -848,3 +848,23 @@ summary {
 .firmware-consent input { margin-top: 4px; }
 .firmware-dialog .link-actions { margin-top: 18px; }
 .machine-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+/* Local Link file browser */
+.files-safety { padding: 1rem 1.2rem; background: var(--surface-raised, #202126); border: 1px solid var(--border, #383940); border-radius: 10px; margin-bottom: 1.5rem; }
+.files-safety p { margin-top: 0; max-width: 76ch; }
+.files-check { display: flex; align-items: center; gap: .65rem; }
+.files-check input { width: auto; margin: 0; flex-shrink: 0; }
+.files-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 1rem; margin: 1.25rem 0; }
+.files-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.files-breadcrumbs { overflow-wrap: anywhere; }
+.files-breadcrumbs button { padding: .3rem .5rem; }
+.files-table-wrap { overflow-x: auto; }
+.files-table { width: 100%; border-collapse: collapse; text-align: left; }
+.files-table th, .files-table td { padding: .85rem .65rem; border-bottom: 1px solid var(--border, #383940); }
+.files-table td:first-child { overflow-wrap: anywhere; min-width: 150px; }
+.files-table td:last-child { min-width: 220px; }
+.files-kind { display: block; font-size: .8rem; margin-top: .3rem; }
+.files-editor { margin-top: 1.5rem; padding: 1.2rem; border: 1px solid var(--border, #383940); border-radius: 10px; }
+.files-editor h3 { margin-top: 0; }
+.files-editor > label:not(.files-check) { display: grid; gap: .5rem; }
+.files-editor > .files-actions { margin-top: 1.2rem; }

@@ -10,6 +10,8 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct Health {
     #[serde(default)]
+    pub file_system_protocol_version: u32,
+    #[serde(default)]
     pub ok: bool,
     #[serde(default)]
     pub name: String,
