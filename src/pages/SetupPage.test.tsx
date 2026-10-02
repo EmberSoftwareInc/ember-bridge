@@ -13,7 +13,8 @@ vi.mock("../api/dongle", () => ({
   onUpdateProgress: fake.listen,
   asDongleError: (e: Error) => ({ code: "error", message: e.message }),
 }));
-import { SetupPage } from "./SetupPage";
+import { useLayoutEffect } from "react";
+import { DisplayOptions, SetupPage } from "./SetupPage";
 function deferred<T>() {
   let resolve!: (v: T) => void;
   const promise = new Promise<T>((r) => { resolve = r; });
@@ -87,8 +88,7 @@ test("accepted image without a confirmed reboot is not reported as success", asy
   expect(screen.queryByText(/Dongle restarted successfully/)).toBeNull(); await ready();
 });
 test("idle status refresh reflects Wi-Fi joining without replacing edited fields", async () => {
-  // Only advance the polling timer. Faking performance.now moves React's
-  // scheduling clock backwards when real timers resume in later tests.
+  // Only mock the polling timeouts; leave React's scheduling clock real.
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   try {
     fake.info.mockResolvedValue({ ...info(), provisioned: true, wifi: { ...info().wifi, connected: false } });
@@ -191,4 +191,28 @@ test("new Link setup returns to a connected Wi-Fi summary after provisioning", a
   fireEvent.click(await screen.findByRole("button", { name: "Back to Ember Link" }));
   expect(screen.getByRole("status").textContent).toContain("ConnectedNew network · 192.168.1.8");
   expect(fake.save).toHaveBeenCalled();
+});
+
+// Trigger the first edit as soon as the controls commit, before passive effects.
+// This makes the initialization race reproducible without sleeps or retries.
+test.each([
+  { label: "Screen orientation", value: "180", expected: { enabled: true, rotation: 180, ledEnabled: true } },
+  { label: "Screen on", expected: { enabled: false, rotation: 0, ledEnabled: true } },
+  { label: "Status light on", expected: { enabled: true, rotation: 0, ledEnabled: false } },
+])("first $label edit survives settings initialization", async ({ label, value, expected }) => {
+  const save = vi.fn().mockImplementation(async (settings) => settings);
+  function FirstInteraction() {
+    useLayoutEffect(() => {
+      const control = screen.getByLabelText(label);
+      if (value) fireEvent.change(control, { target: { value } });
+      else fireEvent.click(control);
+    }, []);
+    return <DisplayOptions settings={{ enabled: true, rotation: 0, ledEnabled: true }} busy={false} onSave={save} />;
+  }
+  await act(async () => { render(<FirstInteraction />); });
+  const button = screen.getByRole("button", { name: "Save settings" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(false);
+  fireEvent.click(button);
+  await screen.findByText("Display settings saved to Link.");
+  expect(save).toHaveBeenCalledExactlyOnceWith(expected);
 });
