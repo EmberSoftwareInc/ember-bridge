@@ -16,6 +16,7 @@ use std::{
 #[derive(Default)]
 pub struct Simulated {
     pub devices: Mutex<Vec<(IpAddr, String)>>,
+    pub probe_errors: Mutex<std::collections::VecDeque<MachineError>>,
     pub calls: AtomicUsize,
     pub busy: AtomicUsize,
     pub uncertain: std::sync::atomic::AtomicBool,
@@ -101,6 +102,9 @@ impl MachineBackend for Backend {
         "test"
     }
     async fn probe(&self, ip: IpAddr) -> Result<Option<MachineInfo>, MachineError> {
+        if let Some(error) = self.0.probe_errors.lock().unwrap().pop_front() {
+            return Err(error);
+        }
         Ok(self
             .0
             .devices

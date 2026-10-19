@@ -101,23 +101,21 @@ body {
   padding: 1px 7px;
 }
 
-/* "Set up dongle": appears only while a dongle is plugged into this
-   computer, pinned just above the footer, pulsing gently until visited. */
+/* Ember Link stays visible above the footer. Only pulse while a Link is
+   connected by USB and another page is selected. */
 .setup-cta {
   margin-top: auto;
   margin-bottom: 8px;
   color: var(--accent);
 }
 
-/* The footer also claims margin-top:auto (its anchor when no dongle is
-   plugged in); with both set, flexbox splits the slack and the button
-   floats mid-sidebar. When the button is present, it owns the slack. */
+/* Let the Link button own the sidebar's spare space above the footer. */
 .setup-cta ~ .sidebar-footer {
   margin-top: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .setup-cta:not(.active) {
+  .setup-cta.usb-connected:not(.active) {
     animation: setup-pulse 1.8s ease-in-out infinite;
   }
 }

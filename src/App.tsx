@@ -8,6 +8,7 @@ import { BridgeProvider, useBridge } from "./hooks/useBridge";
 import { usePolling } from "./hooks/usePolling";
 import type { BridgeStatus, PendingPairing } from "./api/types";
 import type { BridgeClient } from "./api/client";
+import { listDongles } from "./api/dongle";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import emberIcon from "./assets/ember-icon.svg";
@@ -91,6 +92,9 @@ function Shell() {
   const { update: appUpdate } = useAppUpdates();
   const { client, connectError, selectedIp } = useBridge();
   const [page, setPage] = useState<Page>("machines");
+  // Enumerate USB ports without opening a connection to the Link.
+  const dongles = usePolling(listDongles, 2000);
+  const linkConnected = (dongles.data?.length ?? 0) > 0;
   const status = usePolling<BridgeStatus>(
     client ? () => client.status() : null,
     5000,
@@ -148,14 +152,12 @@ function Shell() {
             )}
           </button>
         ))}
-        {
-          <button
-            className={`nav-item setup-cta ${page === "setup" ? "active" : ""}`}
-            onClick={() => setPage("setup")}
-          >
-            Ember Link
-          </button>
-        }
+        <button
+          className={`nav-item setup-cta ${linkConnected ? "usb-connected" : ""} ${page === "setup" ? "active" : ""}`}
+          onClick={() => setPage("setup")}
+        >
+          Ember Link
+        </button>
         <div className="sidebar-footer">
           <div
             className={`dot ${status.data?.server.running ? "dot-ok" : "dot-err"}`}
